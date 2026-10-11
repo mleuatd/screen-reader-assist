@@ -1,0 +1,29 @@
+name: Windows OneCore Japanese voice test
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/onecore-japanese-tts.yml'
+      - 'tests/ScreenReaderAssist.Tests/OneCoreJapaneseBenchmark.cs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  japanese-onecore:
+    runs-on: windows-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Build program
+        shell: pwsh
+        run: dotnet build tests/ScreenReaderAssist.Tests/ScreenReaderAssist.Tests.csproj -c Release
+      - name: Inspect all OneCore voices and time Japanese synthesis
+        shell: pwsh
+        timeout-minutes: 2
+        continue-on-error: true
+        run: |
+          dotnet run --project tests/ScreenReaderAssist.Tests/ScreenReaderAssist.Tests.csproj --no-build -c Release -- --benchmark-onecore-ja
+          if ($LASTEXITCODE -ne 0) { Write-Host "ONECORE JAPANESE NOT VERIFIED exit=$LASTEXITCODE"; exit $LASTEXITCODE }
