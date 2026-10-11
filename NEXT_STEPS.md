@@ -38,3 +38,8 @@
 - `Ctrl+Alt+R`の受け付けで高い上昇音、範囲選択終了・Escで低い下降音。OCR完了は含まない。
 - Windows CIテスト・新Windows ZIPのリリースを検証してから`v0.6.4-preview.1`を使用する。
 - 実Windowsで2音の聞き分け、繰り返し操作、Windows音量ゼロ時の動作を確認する。
+
+## v0.6.4 結果
+- Windows CI 75件全合格（`38176969490`）、Web CI成功（`38176969577`）。配布ZIP`v0.6.4-preview.1`公開成功（`38176969484`）。
+- 新版ZIPをEXEとsettings.iniが同じ場所になるよう展開して起動。Ctrl+Alt+R受理時の上昇音と範囲選択終了時の下降音を実機で確認する。
+- 音が聞こえない場合はWindows音量、オーディオ出力先、EXE横のログ`ScreenReaderAssist.log`内の`[操作音]`とショートカット登録ログを確認する。

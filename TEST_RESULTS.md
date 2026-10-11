@@ -173,3 +173,9 @@ Windows向け自動テストは`tests/ScreenReaderAssist.Tests/`に存在する�
 - 開始音は上昇2音（660Hz→990Hz）、終了音は下降2音（660Hz→440Hz）、各約185ms。WAVバッファを生成し、音声ストリームをプロセス中保持。
 - Windowsロジック試験でWAVヘッダー（RIFF/WAVE、22,050Hz）、再生時間に相当する容量、開始と終了の波形相違を検証。
 - GitHub Actionsはヘッドレス環境のため、音がスピーカーから聞こえるかは未実機検証。
+
+### v0.6.4 開始・終了音 ビルド結果
+- Windows Actions `38176969490`：**成功**、75件のロジックテストがPASS、エラーなし。追加テスト4件：開始／終了WAVデータ、波形差、WAVヘッダーと22,050 Hzの設定、ファイル容量。
+- Web Actions `38176969577`：**成功**（今回Web設定のコード変更はなし）。
+- Release Actions `38176969484`：**成功**、`v0.6.4-preview.1`公開、配布ZIP`ScreenReaderAssist-win-x64.zip` 74,584,009 bytes。
+- 実機上で効果音が鳴ること・Windowsの音量や他アプリへの干渉は未検証。
