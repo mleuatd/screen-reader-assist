@@ -19,7 +19,7 @@
 - [x] GitHubリポジトリ新規作成・35ソースファイル反映
 - [ ] Pages有効化（所有者操作が必要）
 - [x] Windowsビルドアーティファクト生成の実体・サイズ確認
-- [ ] Releases公開
+- [x] 実機未検証と明示した`v0.1.0-preview.1`のGitHub Releases公開
 - [ ] 音声プラグイン・声質調整実装
 
 新しい公開リポジトリ `mleuatd/screen-reader-assist` にソースコードと4つの常設GitHub Actionsワークフローを反映済み。自動ビルド成功。Pages作成には現在のGitHub Actions権限では足りず、所有者がSettings > PagesからGitHub Actionsを選択する必要がある。

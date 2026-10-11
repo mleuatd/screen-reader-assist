@@ -22,3 +22,5 @@
 Windows向け自動テストは`tests/ScreenReaderAssist.Tests/`に存在するが、未実行のため合格とは扱わない。
 
 - 2026-10-11: `38116579079` import / web-test / windows-build の3ジョブがすべて成功。自己完結型Windows ZIPアーティファクトの存在とサイズ74,134,083バイトをAPIで確認。実機画面・音声出力を検証したわけではない。
+
+| Windowsプレリリース公開 | PASS | `v0.1.0-preview.1` GitHub Releasesに74,555,912バイトの配布ZIPを公開確認、Actions `38116822637` 成功 |

@@ -2,7 +2,7 @@
 
 画面の任意範囲からWindowsの日本語OCRで文字を取り出し、インストール済みの音声合成エンジンで読み上げる、常駐型オープンソースアプリの**試作ソースコード**です。
 
-> **検証状況（2026-10-11）:** GitHub Actions のWindowsビルド・ロジックテストとWeb設定テストが成功。`win-x64` の配布アーティファクト生成を確認済み。Windows GUIでの操作、ゲーム・漫画OCR、3回クリック拡大などの実機検証は未実施。GitHub Pagesは未有効化で公開待ち。試作版につき未検証機能に注意。
+> **検証状況（2026-10-11）:** GitHub Actions のWindowsビルド・ロジックテストとWeb設定テストが成功。`win-x64` の配布アーティファクト生成を確認済み。Windows GUIでの操作、ゲーム・漫画OCR、3回クリック拡大などの実機検証は未実施。GitHub Releases に v0.1.0-preview.1 をプレリリース公開済み。GitHub Pagesは未有効化で公開待ち。試作版につき未検証機能に注意。
 
 ## 主な機能（実装済みコード／動作未検証）
 
@@ -70,3 +70,8 @@ dotnet publish src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release -r wi
 ## ライセンス
 
 このリポジトリに新規作成したソースコードはMITライセンス（`LICENSE`参照）。Windows SDKと`System.Speech`には各提供元のライセンス・利用規約が適用されます。第三者の漫画画像や声優の音声データは含んでいません。
+
+## 試験版を入手する
+
+- [Windows 11 x64向け試験版 ZIP (v0.1.0-preview.1)](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.1.0-preview.1/ScreenReaderAssist-win-x64.zip)
+- **注意**: 実機GUI検証は未実施。初回起動時のSmartScreen警告の可能性あり。Windows標準のOCR言語と読み上げ音声が必要です。
