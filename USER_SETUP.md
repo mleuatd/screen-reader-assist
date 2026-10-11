@@ -1,6 +1,6 @@
 # Windows 11での試用手順（実験版）
 
-1. [試用版ZIP](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.1.0-preview.1/ScreenReaderAssist-win-x64.zip)を取得し、任意のフォルダーに展開します。
+1. [試用版ZIP](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.2.0-preview.1/ScreenReaderAssist-win-x64.zip)を取得し、任意のフォルダーに展開します。
 2. 展開した`ScreenReaderAssist.exe`を起動します。署名されていないためWindows SmartScreen警告が表示される場合があります。信頼できない場合は起動しないでください。
 3. 起動すると通知領域に常駐します。設定を開くには通知領域のアイコンをダブルクリックします。
 4. `Ctrl+Alt+R`で範囲選択、`Alt+Shift+M`で吹き出しクリック、`Alt+Shift+U`でフォーカス中のUI文字取得、`Alt+Shift+S`で停止、`Alt+Shift+P`で一時停止・再開、`Alt+Shift+Z`で一時拡大です。
@@ -8,8 +8,8 @@
 
 ## 注意点
 
-- ゲーム、漫画の縦書き、吹き出し境界、低レベルマウスフック、拡大表示の実機操作はまだ検証していません。
-- 3回クリック拡大は通常のクリックと競合する可能性があるため初期設定で**無効**です。
+- ゲーム、漫画の縦書き、吹き出し境界、タッチ入力、拡大表示の実機操作はまだ検証していません。
+- 他アプリとの干渉防止のため3回クリック拡大の常時監視は廃止しました。範囲選択の入力はCtrl+Alt+Rで専用画面が起動したときだけ受け取ります。
 - テストする場合は、保存していない文書や重要な作業のない状態で行ってください。
 - 画面画像とOCR文字を外部サーバーへ自動送信する処理は実装していません。
 - 不具合が起きた場合は`Alt+Shift+S`で読み上げ停止、通知領域メニューからアプリ終了を試してください。

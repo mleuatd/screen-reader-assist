@@ -12,3 +12,7 @@ test('no user input injection in schema',()=>{
   const s=normalizeSettings({version:1,speech:{voiceName:'a'.repeat(10000)}});
   assert.equal(s.speech.voiceName.length,100);
 });
+
+test('legacy triple click setting is disabled to prevent interference',()=>{
+  assert.equal(normalizeSettings({version:1,magnifier:{enableTripleClick:true}}).magnifier.enableTripleClick,false);
+});

@@ -6,7 +6,7 @@ function syncModel(){
   model.speech.volume=Number(byId('volume').value);
   model.speech.voiceName=byId('voiceName').value;
   model.magnifier.zoom=Number(byId('zoom').value);
-  model.magnifier.enableTripleClick=byId('triple').checked;
+  model.magnifier.enableTripleClick=false;
   model.ocr.copyToClipboard=byId('copy').checked;
   model.ocr.preferJapanese=byId('japanese').checked;
   byId('rateVal').textContent=String(model.speech.rate);

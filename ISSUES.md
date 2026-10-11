@@ -17,3 +17,5 @@
 - **RESOLVED-12 体験版をWebで開けない問題（代替経路）**: 専用GitHub Pagesとは別に、raw.githack.com がGitHubリポジトリからHTMLを配信する経路を確保。HTTP・リソース検証済み。初回の確認画面と第三者サービスへの依存は残る。
 
 - **OPEN-13 専用GitHub Pages初期設定**：GitHub標準の `https://mleuatd.github.io/screen-reader-assist/` は未公開。リポジトリ設定の管理操作が必要で現在のGitHub連携では不可能。独立したraw.githack.com経由の無料公開は確認済み。ドラム側の間借りは廃止した。
+
+- **OPEN-14 v0.2タッチ入力排他実機検証**：Ctrl+Alt+Rで最前面の選択フォームにアクティブを移し、そこでのみタップ/ドラッグ座標を取得する実装は完了。Windows 11タッチPC上で下層アプリにタッチ操作が伝わらないことやDPI、UAC、ゲームフルスクリーンとの兼ね合いは未検証。

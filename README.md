@@ -1,11 +1,11 @@
-# Screen Reader Assist — Windows 11 視覚障害支援アプリ（試作 v0.1）
+# Screen Reader Assist — Windows 11 視覚障害支援アプリ（試作 v0.2）
 
 **[インストール不要でブラウザ体験（スマホ・PC）](https://raw.githack.com/mleuatd/screen-reader-assist/main/site/demo.html)** | [Web設定画面（GitHub経由）](https://raw.githack.com/mleuatd/screen-reader-assist/main/site/index.html)
 
 
 画面の任意範囲からWindowsの日本語OCRで文字を取り出し、インストール済みの音声合成エンジンで読み上げる、常駐型オープンソースアプリの**試作ソースコード**です。
 
-> **検証状況（2026-10-11）:** GitHub Actions のWindowsビルド・ロジックテストとWeb設定テストが成功。`win-x64` の配布アーティファクト生成を確認済み。Windows GUIでの操作、ゲーム・漫画OCR、3回クリック拡大などの実機検証は未実施。GitHub Releases に v0.1.0-preview.1 をプレリリース公開済み。GitHub Pagesは初期有効化待ちですが、無料のGitHubファイル表示サービスで公開体験版を利用可能。試作版につき未検証機能に注意。
+> **検証状況（2026-10-11）:** GitHub Actions のWindowsビルド・ロジックテストとWeb設定テストが成功。`win-x64` の配布アーティファクト生成を確認済み。v0.2のWindowsビルドと14件のロジックテストにも成功。Windows GUIでの操作、ゲーム・漫画OCR・タッチ入力などの実機検証は未実施。GitHub Releases に v0.2.0-preview.1 をプレリリース公開済み。GitHub Pagesは初期有効化待ちですが、無料のGitHubファイル表示サービスで公開体験版を利用可能。試作版につき未検証機能に注意。
 
 ## 主な機能（実装済みコード／動作未検証）
 
@@ -76,12 +76,12 @@ dotnet publish src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release -r wi
 
 ## 試験版を入手する
 
-- [Windows 11 x64向け試験版 ZIP (v0.1.0-preview.1)](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.1.0-preview.1/ScreenReaderAssist-win-x64.zip)
+- [Windows 11 x64向け試験版 ZIP (v0.2.0-preview.1)](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.2.0-preview.1/ScreenReaderAssist-win-x64.zip)
 - **注意**: 実機GUI検証は未実施。初回起動時のSmartScreen警告の可能性あり。Windows標準のOCR言語と読み上げ音声が必要です。
 
 ## ブラウザ体験版（アプリのインストール不要）
 
-- [操作体験デモ](https://mleuatd.github.io/screen-reader-assist/demo.html) — サンプル画面の範囲読み上げ、漫画の吹き出し読み上げ、3回タップの拡大を試せます。
+- [操作体験デモ](https://raw.githack.com/mleuatd/screen-reader-assist/main/site/demo.html) — サンプル画面の範囲読み上げ、漫画の吹き出し読み上げ、3回タップの拡大を試せます。
 - 利用者のブラウザの SpeechSynthesis によって実際の音声合成を行います（発声可否は音声環境に依存）。
 - この体験版は画像OCRを実行せず、サンプルに紐付く文章を取得する模擬動作です。Windows内の別アプリの画面は読み取れません。
 - 漫画の吹き出し検出を自動実行するものではありません。サンプル吹き出しはあらかじめ用意されています。
@@ -114,4 +114,4 @@ dotnet publish src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release -r wi
 - ドラッグして離すと囲んだ座標をOCR。短いタップの場合は周辺（最大360×160ピクセル）をOCR。Escで中止。
 - 選択中は通常アプリにクリック操作が伝わらないことを意図した構造ですが、UACセキュアデスクトップ、排他的フルスクリーン、他のTopMostウィンドウ等の特例があります。実機での入力非干渉テストは未完了。
 - 以前の設定ファイルの`magnifier.enableTripleClick:true`は読み込み時に無効化。グローバル3連クリックフックは使用しません。
-- 対応バージョンは次のプレビューリリース以降です。旧`v0.1.0-preview.1`はホットキーが違います。
+- 対応バージョンは次のプレビューリリース以降です。旧`v0.2.0-preview.1`はホットキーが違います。

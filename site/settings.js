@@ -13,6 +13,6 @@ export function normalizeSettings(raw){
     version:1,
     speech:{rate:Math.round(clamp(sp.rate,-10,10,0)),volume:Math.round(clamp(sp.volume,0,100,100)),voiceName:typeof sp.voiceName==='string'?sp.voiceName.slice(0,100):""},
     ocr:{copyToClipboard:oc.copyToClipboard===true,reuseLastRegion:oc.reuseLastRegion===true,preferJapanese:oc.preferJapanese!==false},
-    magnifier:{enableTripleClick:mg.enableTripleClick===true,zoom:clamp(mg.zoom,1.5,6,2)}
+    magnifier:{enableTripleClick:false,zoom:clamp(mg.zoom,1.5,6,2)}
   };
 }
