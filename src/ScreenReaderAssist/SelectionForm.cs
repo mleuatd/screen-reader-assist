@@ -12,6 +12,7 @@ public sealed class SelectionForm : Form
     private readonly Rectangle _desktop;
     public Rectangle? ChosenScreenBounds { get; private set; }
     public Point? ClickScreenPoint { get; private set; }
+    public Rectangle DesktopBounds => _desktop;
 
     public SelectionForm(bool balloonMode = false)
     {
@@ -27,7 +28,7 @@ public sealed class SelectionForm : Form
         Cursor = Cursors.Cross;
         DoubleBuffered = true;
         BackColor = Color.Black;
-        Opacity = .98;
+        Opacity = 1;
         AccessibleName = balloonMode ? "漫画の吹き出しをクリック" : "読み取る範囲をドラッグ。矢印キーで移動、Shift+矢印でサイズ調整、Enterで確定、Escapeで取消";
     }
     protected override void OnShown(EventArgs e)
@@ -35,8 +36,7 @@ public sealed class SelectionForm : Form
         base.OnShown(e);
         Activate(); Focus();
         var pos = PointToClient(Cursor.Position);
-        _selection = new Rectangle(Math.Clamp(pos.X-200, 0, Math.Max(0, Width-1)), Math.Clamp(pos.Y-80, 0, Math.Max(0, Height-1)), 320, 160);
-        _selection = Rectangle.Intersect(_selection, ClientRectangle);
+        _selection = SelectionGeometry.AroundTap(pos,ClientRectangle);
         Invalidate();
     }
     protected override void OnPaint(PaintEventArgs e)
@@ -63,8 +63,7 @@ public sealed class SelectionForm : Form
     {
         base.OnMouseMove(e);
         if (!_dragging) return;
-        var x = Math.Min(_start.X, e.X); var y = Math.Min(_start.Y, e.Y);
-        _selection = Rectangle.Intersect(Rectangle.FromLTRB(x, y, Math.Max(_start.X, e.X), Math.Max(_start.Y, e.Y)), ClientRectangle);
+        _selection = SelectionGeometry.FromDrag(_start,e.Location,ClientRectangle);
         Invalidate();
     }
     protected override void OnMouseUp(MouseEventArgs e)
@@ -72,7 +71,11 @@ public sealed class SelectionForm : Form
         base.OnMouseUp(e);
         if (!_dragging || e.Button != MouseButtons.Left) return;
         _dragging = false; Capture = false;
-        if (_selection.Width >= 8 && _selection.Height >= 8) Accept();
+        _selection = SelectionGeometry.FromDrag(_start,e.Location,ClientRectangle);
+        // A single touch / click selects a useful region around that point.
+        if (_selection.Width < 8 || _selection.Height < 8)
+            _selection = SelectionGeometry.AroundTap(e.Location,ClientRectangle);
+        Accept();
     }
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {
@@ -97,8 +100,15 @@ public sealed class SelectionForm : Form
     private void Accept()
     {
         if (_selection.Width < 8 || _selection.Height < 8) return;
-        ChosenScreenBounds = new Rectangle(_selection.X + _desktop.X, _selection.Y + _desktop.Y, _selection.Width, _selection.Height);
+        ChosenScreenBounds = SelectionGeometry.ToScreen(_selection,_desktop);
         DialogResult = DialogResult.OK; Close();
+    }
+    public Bitmap CopyScreenshot() => (Bitmap)_screenshot.Clone();
+    public Bitmap CopyChosenBitmap()
+    {
+        if (ChosenScreenBounds is not Rectangle chosen) throw new InvalidOperationException("範囲が選択されていません。");
+        var local=new Rectangle(chosen.X-_desktop.X,chosen.Y-_desktop.Y,chosen.Width,chosen.Height);
+        return _screenshot.Clone(local,_screenshot.PixelFormat);
     }
     protected override void Dispose(bool disposing)
     {

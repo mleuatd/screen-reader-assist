@@ -8,13 +8,12 @@ public sealed class MainForm : Form
     private readonly SpeechService _speech = new();
     private readonly OcrService _ocr = new();
     private readonly MagnificationService _magnifier = new();
-    private MouseTripleClickHook? _mouseHook;
     private readonly NotifyIcon _tray;
     private readonly NumericUpDown _rate = new() { Minimum=-10, Maximum=10, Width=80 };
     private readonly NumericUpDown _volume = new() { Minimum=0, Maximum=100, Width=80 };
     private readonly NumericUpDown _zoom = new() { Minimum=15, Maximum=60, Increment=5, Width=80 };
     private readonly ComboBox _voice = new() { DropDownStyle=ComboBoxStyle.DropDownList, Width=330 };
-    private readonly CheckBox _triple = new() { Text="3回クリックの一時拡大を有効にする（試験的）", AutoSize=true };
+    private readonly CheckBox _triple = new() { Text="3回クリック拡大は無効（競合防止）。拡大は Alt+Shift+Z", AutoSize=true, Enabled=false };
     private readonly CheckBox _copy = new() { Text="認識した文字をクリップボードへコピー", AutoSize=true };
     private readonly CheckBox _japanese = new() { Text="日本語OCRを優先", AutoSize=true };
     private readonly Label _status = new() { Text="準備完了", AutoSize=false, Width=540, Height=60, AccessibleName="現在の状態", AutoEllipsis=true };
@@ -53,8 +52,9 @@ public sealed class MainForm : Form
     }
     private void Register(int id,Keys k)
     {
-        if(!NativeHotkeys.RegisterHotKey(Handle,id,NativeHotkeys.Alt | NativeHotkeys.Shift,(int)k))
-            _status.Text=$"ショートカット Alt+Shift+{k} が競合しています。";
+        var modifiers = k==Keys.R ? NativeHotkeys.Control | NativeHotkeys.Alt : NativeHotkeys.Alt | NativeHotkeys.Shift;
+        if(!NativeHotkeys.RegisterHotKey(Handle,id,modifiers | NativeHotkeys.NoRepeat,(int)k))
+            _status.Text=$"ショートカット {(k==Keys.R ? "Ctrl+Alt+R" : $"Alt+Shift+{k}")} が競合しています。";
     }
     protected override void OnHandleDestroyed(EventArgs e)
     {
@@ -84,7 +84,7 @@ public sealed class MainForm : Form
         panel.RowStyles.Add(new RowStyle(SizeType.Percent,100));
         Controls.Add(panel);
         int row=0;
-        AddFull("Alt+Shift+R：範囲読み上げ　M：漫画　U：UI要素　S：停止　P：一時停止　Z：拡大",row++);
+        AddFull("Ctrl+Alt+R：範囲読み上げ（タッチ／ドラッグ）。Alt+Shift+M：漫画、U：UI、S：停止、P：一時停止、Z：拡大",row++);
         Add("読み上げ速度 (-10～10)",_rate,row++);
         Add("読み上げ音量",_volume,row++);
         Add("読み上げ音声",_voice,row++);
@@ -134,7 +134,6 @@ public sealed class MainForm : Form
         foreach(var name in _speech.VoiceNames) _voice.Items.Add(name);
         int idx=_voice.Items.IndexOf(_settings.speech.voiceName);
         _voice.SelectedIndex=idx>=0?idx:0;
-        TryUpdateHook();
     }
     private void SaveControls()
     {
@@ -143,22 +142,11 @@ public sealed class MainForm : Form
             _settings.speech.volume=(int)_volume.Value;
             _settings.speech.voiceName=_voice.SelectedIndex<=0?"":_voice.SelectedItem?.ToString()??"";
             _settings.magnifier.zoom=(float)_zoom.Value/10f;
-            _settings.magnifier.enableTripleClick=_triple.Checked;
+            _settings.magnifier.enableTripleClick=false;
             _settings.ocr.copyToClipboard=_copy.Checked;
             _settings.ocr.preferJapanese=_japanese.Checked;
-            _settings.Save();TryUpdateHook();Status("設定を保存しました。");
+            _settings.Save();Status("設定を保存しました。");
         } catch(Exception ex) { Status("設定保存エラー: "+ex.Message); }
-    }
-    private void TryUpdateHook()
-    {
-        if(!_settings.magnifier.enableTripleClick) { _mouseHook?.Dispose();_mouseHook=null;return; }
-        if(_mouseHook is not null)return;
-        try {
-            _mouseHook=new MouseTripleClickHook();
-            _mouseHook.OnTripleDown=p=>_magnifier.Start(p,_settings.magnifier.zoom);
-            _mouseHook.OnDrag=p=>_magnifier.Drag(p);
-            _mouseHook.OnRelease=()=>_magnifier.Restore();
-        } catch(Exception ex) { _settings.magnifier.enableTripleClick=false;_triple.Checked=false;Status("3回クリック検出を開始できません: "+ex.Message); }
     }
     private void ToggleZoom()
     {
@@ -171,10 +159,13 @@ public sealed class MainForm : Form
         _busy=true;
         try {
             Hide();
+            // Let Windows restore the previous application before capturing it.
+            await Task.Delay(80);
             using var sel=new SelectionForm();
             if(sel.ShowDialog()!=DialogResult.OK || sel.ChosenScreenBounds is null) return;
             _lastRect=sel.ChosenScreenBounds;
-            await CaptureAndRead(_lastRect.Value);
+            // Use the exact pre-overlay screenshot that the user selected from.
+            await ReadBitmap(sel.CopyChosenBitmap());
         } catch(Exception ex) {Status("読み取りエラー: "+ex.Message);} finally {_busy=false;}
     }
     private async Task ReadBalloon()
@@ -183,24 +174,17 @@ public sealed class MainForm : Form
         _busy=true;
         try {
             Hide();
+            await Task.Delay(80);
             using var sel=new SelectionForm(balloonMode:true);
             if(sel.ShowDialog()!=DialogResult.OK || sel.ClickScreenPoint is null)return;
-            await Task.Delay(150);
-            var bounds=ScreenCapture.VirtualBounds;
-            using var whole=ScreenCapture.Capture(bounds);
+            var bounds=sel.DesktopBounds;
+            using var whole=sel.CopyScreenshot();
             var click=sel.ClickScreenPoint.Value;
             var rel=new Point(click.X-bounds.Left,click.Y-bounds.Top);
             var estimate=BalloonDetector.Estimate(whole,rel);
             _lastRect=new Rectangle(estimate.X+bounds.X,estimate.Y+bounds.Y,estimate.Width,estimate.Height);
             await ReadBitmap(whole.Clone(estimate,whole.PixelFormat));
         } catch(Exception ex) { Status("漫画モードエラー: "+ex.Message);} finally {_busy=false;}
-    }
-    private async Task CaptureAndRead(Rectangle rect)
-    {
-        // Let the overlay close before taking a new screenshot.
-        await Task.Delay(150);
-        using var bmp=ScreenCapture.Capture(rect);
-        await ReadBitmap((Bitmap)bmp.Clone());
     }
     private async Task ReadBitmap(Bitmap image)
     {
@@ -248,7 +232,7 @@ public sealed class MainForm : Form
     private void Quit() {_quitting=true;Close();}
     protected override void Dispose(bool disposing)
     {
-        if(disposing){_mouseHook?.Dispose();_magnifier.Dispose();_speech.Dispose();_tray.Visible=false;_tray.Dispose();}
+        if(disposing){_magnifier.Dispose();_speech.Dispose();_tray.Visible=false;_tray.Dispose();}
         base.Dispose(disposing);
     }
 }

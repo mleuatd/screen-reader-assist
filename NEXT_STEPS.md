@@ -1,10 +1,9 @@
-# 現在の独立した公開先（2026-10-11）
+# v0.2作業再開位置（2026-10-11）
 
-- 専用リポジトリ `https://github.com/mleuatd/screen-reader-assist`
-- インストール不要Web体験版 https://raw.githack.com/mleuatd/screen-reader-assist/main/site/demo.html
-- Web設定ページ `https://raw.githack.com/mleuatd/screen-reader-assist/main/site/index.html`
-- Windows版 `https://github.com/mleuatd/screen-reader-assist/releases/tag/v0.1.0-preview.1`
-- ドラム用サイトからは一時ミラーを削除済み。ドラム側とは分離して管理する。
-- 専用GitHub Pagesの初期有効化は未完了。現GitHub連携では設定権限がないため、完了扱いにしない。
-- 実機GUIテストは未実施、Windowsアプリはプレリリース扱いを維持。
-
+1. 正本: https://github.com/mleuatd/screen-reader-assist の main。
+2. Ctrl+Alt+Rを専用読み上げモード起動に変更。タッチ/マウス範囲入力は最前面の SelectionForm、1回タップは最大360×160pxの周辺をOCRする。
+3. GitHub Actions Windowsビルド/Logic smoke と Webテスト成功を確認し、失敗時はコードを修正・再実行。
+4. v0.2.0-preview.1のGitHub Releasesを新規配布し、既存の v0.1.0-preview.1 と混同しない。
+5. README・Webサイトの最新版ZIPリンクを確認。
+6. Windows 11タッチPCで、通常アプリへマウス/touch操作が届かないこと、低DPI/高DPI、排他的フルスクリーン、OCR音声を確認する。未検証の場合はそのまま報告。
+7. 旧グローバル3回クリックフックは無効。Windows拡大は Alt+Shift+Z の試験操作として維持。

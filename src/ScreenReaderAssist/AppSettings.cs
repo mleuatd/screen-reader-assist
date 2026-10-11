@@ -32,6 +32,8 @@ public sealed class AppSettings
         config.speech.volume = Math.Clamp(config.speech.volume, 0, 100);
         config.speech.voiceName = (config.speech.voiceName ?? "").Trim();
         config.magnifier.zoom = Math.Clamp(config.magnifier.zoom, 1.5f, 6.0f);
+        // v0.2: retire the global click hook to avoid interfering with other applications.
+        config.magnifier.enableTripleClick = false;
         return config;
     }
 }

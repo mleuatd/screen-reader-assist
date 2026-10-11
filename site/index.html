@@ -19,7 +19,7 @@
         <div><label for="volume">音量（0〜100）</label><input type="range" id="volume" min="0" max="100" value="100" step="5"><output for="volume" id="volumeVal">100</output></div>
         <div><label for="voiceName">インストール済み音声名（任意）</label><input type="text" id="voiceName" placeholder="空欄なら日本語音声を自動選択" maxlength="100"></div>
         <div><label for="zoom">画面拡大倍率</label><select id="zoom"><option value="1.5">1.5倍</option><option value="2" selected>2倍</option><option value="3">3倍</option><option value="4">4倍</option><option value="5">5倍</option><option value="6">6倍</option></select></div>
-        <div class="check"><input type="checkbox" id="triple"><label for="triple">3回クリックによる一時拡大を有効化（試験的。通常クリックと競合する場合あり）</label></div>
+        <div class="check"><input type="checkbox" id="triple" disabled><label for="triple">3回クリック拡大は干渉防止のため廃止しました。ショートカットで拡大できます</label></div>
         <div class="check"><input type="checkbox" id="copy"><label for="copy">認識文字を自動コピー</label></div>
         <div class="check"><input type="checkbox" id="japanese" checked><label for="japanese">日本語OCRを優先</label></div>
       </div>
@@ -27,7 +27,7 @@
       <p id="message" role="status" aria-live="polite"></p>
       <details><summary>設定JSONのプレビュー</summary><pre id="preview"></pre></details>
     </section>
-    <section id="help" class="card" aria-labelledby="helpTitle"><h2 id="helpTitle">基本操作</h2><dl><dt>Alt + Shift + R</dt><dd>範囲を選択して文字を認識・読み上げ</dd><dt>Alt + Shift + M</dt><dd>漫画の吹き出しをクリックしてOCR（簡易検出・試験版）</dd><dt>Alt + Shift + U</dt><dd>現在フォーカス中のUI Automation文字を読む</dd><dt>Alt + Shift + S / P</dt><dd>停止 / 一時停止・再開</dd><dt>Alt + Shift + Z</dt><dd>画面拡大の開始・終了（試験的）</dd></dl><p>画像や保護されたゲームの文字は読み取れない場合があります。無料のWindows音声合成で日本語音声がない場合は、Windowsの言語・音声設定を確認してください。</p></section>
+    <section id="help" class="card" aria-labelledby="helpTitle"><h2 id="helpTitle">基本操作</h2><dl><dt>Ctrl + Alt + R</dt><dd>画面上の専用選択モードを開き、タッチ・ドラッグまたはキーボードで範囲を決めて読み上げ。1回タップで周辺を読む</dd><dt>Alt + Shift + M</dt><dd>漫画の吹き出しをクリックしてOCR（簡易検出・試験版）</dd><dt>Alt + Shift + U</dt><dd>現在フォーカス中のUI Automation文字を読む</dd><dt>Alt + Shift + S / P</dt><dd>停止 / 一時停止・再開</dd><dt>Alt + Shift + Z</dt><dd>画面拡大の開始・終了（試験的）</dd></dl><p>画像や保護されたゲームの文字は読み取れない場合があります。無料のWindows音声合成で日本語音声がない場合は、Windowsの言語・音声設定を確認してください。</p></section>
     <footer><p>オフライン処理・プライバシー優先。公開ソースの初期試作です。声優本人の音声を学習・複製する機能はありません。</p></footer>
   </main><script type="module" src="app.js"></script>
 </body>

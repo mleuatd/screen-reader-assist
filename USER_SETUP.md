@@ -3,7 +3,7 @@
 1. [試用版ZIP](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.1.0-preview.1/ScreenReaderAssist-win-x64.zip)を取得し、任意のフォルダーに展開します。
 2. 展開した`ScreenReaderAssist.exe`を起動します。署名されていないためWindows SmartScreen警告が表示される場合があります。信頼できない場合は起動しないでください。
 3. 起動すると通知領域に常駐します。設定を開くには通知領域のアイコンをダブルクリックします。
-4. `Alt+Shift+R`で範囲選択、`Alt+Shift+M`で吹き出しクリック、`Alt+Shift+U`でフォーカス中のUI文字取得、`Alt+Shift+S`で停止、`Alt+Shift+P`で一時停止・再開、`Alt+Shift+Z`で一時拡大です。
+4. `Ctrl+Alt+R`で範囲選択、`Alt+Shift+M`で吹き出しクリック、`Alt+Shift+U`でフォーカス中のUI文字取得、`Alt+Shift+S`で停止、`Alt+Shift+P`で一時停止・再開、`Alt+Shift+Z`で一時拡大です。
 5. Windowsの日本語OCR言語とSAPI対応音声が利用できない場合、読み上げが動作しない可能性があります。Windows設定の言語と音声を確認してください。
 
 ## 注意点
@@ -13,3 +13,5 @@
 - テストする場合は、保存していない文書や重要な作業のない状態で行ってください。
 - 画面画像とOCR文字を外部サーバーへ自動送信する処理は実装していません。
 - 不具合が起きた場合は`Alt+Shift+S`で読み上げ停止、通知領域メニューからアプリ終了を試してください。
+
+**注意**: 上記キー変更はv0.2の試用版からです。旧v0.1.0-preview.1はAlt+Shift+Rのままです。タッチ1回で周辺を読む操作、最前面の入力受け取りの安定性はWindows実機で要検証です。
