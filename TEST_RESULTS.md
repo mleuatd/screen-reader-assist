@@ -76,3 +76,9 @@ Windows向け自動テストは`tests/ScreenReaderAssist.Tests/`に存在する�
 - Windowsロジックテスト：既定のcursor/ocrFallback、旧version1の設定、異常mode/dwellMilliseconds、manga/selection/off判定を追加。
 - Web設定テスト：既定値、変更保存、旧JSON互換、異常値補正を追加。
 - Windows GUI実機：カーソルからUIAを取得できるか、OCRに自動で切り替わるか、漫画吹き出しを正しく認識するかは未確認。
+
+### 最新：v0.4.0-preview.2（2026-10-11）
+- Windows CI `38128336948`：**成功**（22件のロジックテストがPASS）。
+- Webサイト/設定 `38128336957`：**成功**（Nodeテスト16/16件PASS）。
+- GitHub Releases: `https://github.com/mleuatd/screen-reader-assist/releases/tag/v0.4.0-preview.2`（Windows ZIP 74,551,895 bytes）。
+- Windowsの実画面でのUIA / MSAA COM値の取得、OCR精度、音声出力、マウス非干渉は**未検証**。自動テスト成功を実機検証済みとはみなさない。
