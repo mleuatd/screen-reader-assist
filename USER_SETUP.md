@@ -1,6 +1,6 @@
 # Windows 11での試用手順（実験版）
 
-1. [試用版ZIP](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.4.0-preview.2/ScreenReaderAssist-win-x64.zip)を取得し、任意のフォルダーに展開します。
+1. [試用版ZIP](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.4.1-preview.1/ScreenReaderAssist-win-x64.zip)を取得し、任意のフォルダーに展開します。
 2. 展開した`ScreenReaderAssist.exe`を起動します。署名されていないためWindows SmartScreen警告が表示される場合があります。信頼できない場合は起動しないでください。
 3. 起動すると通知領域に常駐します。設定を開くには通知領域のアイコンをダブルクリックします。
 4. `Ctrl+Alt+R`で範囲選択、`Alt+Shift+M`で吹き出しクリック、`Alt+Shift+U`でフォーカス中のUI文字取得、`Alt+Shift+S`で停止、`Alt+Shift+P`で一時停止・再開、`Alt+Shift+Z`で一時拡大です。
@@ -27,3 +27,6 @@
 3. デジタル文字だけを読みたい場合は「画像OCRも試す」のチェックを外してください。既定はチェックONです。
 4. 「静止時間（ms）」を設定し保存すると、反応するまでの時間を変更できます。
 5. 自動読み上げはクリックを横取りしません。YouTubeのリンクを通常クリックすると元の動作が発生します。リンクを開かずに範囲を選ぶ場合はCtrl+Alt+Rの選択モードを使ってください。
+
+## v0.4.1 画像文字への対応
+標準の「カーソルで自動読み上げ」で画像OCR補完を有効にしておくと、デジタル文字情報や通常のOCRで読めない場合に、文字らしい領域を推定して再度OCRを試みます。漫画モードでも同様に使用します。認識できない場合は無理に文章を作らず読み上げません。

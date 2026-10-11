@@ -36,6 +36,6 @@ jobs:
           # Experimental preview / 試作版
           Windows 11 x64向けの実験版です。ビルドと設定・吹き出し検出のロジックテストは実行済みですが、実機でのGUI操作、音声読み上げ、ゲーム、漫画、日本語縦書きOCR、拡大操作は未検証です。
           無署名アプリのためWindows SmartScreenが警告を表示する可能性があります。初めての実行は未保存のデータや重要な操作がない状態で行ってください。
-          標準はカーソル静止でUIAからデジタル文字を読み、取得不可ならOCR補完。漫画OCR、範囲選択、停止の4モードを設定画面・通知領域で切替。Ctrl+Alt+Rで最前面の読み上げ選択モードを起動。カーソルを約1秒止めると近傍の文字行をOCRして自動読み上げ。マウス/タッチのドラッグで範囲選択、1回タップで周辺をOCRします。グローバル3回クリック拡大は廃止しました。選択モードのタッチ操作は実機未検証です。使用条件・既知の問題はREADMEとISSUES.mdを参照してください。
+          標準はカーソル静止でUIAからデジタル文字を読み、取得不可ならOCR補完。通常OCRが失敗した場合、文字らしい矩形を自動検出し拡大・明暗補正して最大2候補をOCR再試行。漫画OCR、範囲選択、停止の4モードを設定画面・通知領域で切替。Ctrl+Alt+Rで最前面の読み上げ選択モードを起動。カーソルを約1秒止めると近傍の文字行をOCRして自動読み上げ。マウス/タッチのドラッグで範囲選択、1回タップで周辺をOCRします。グローバル3回クリック拡大は廃止しました。選択モードのタッチ操作は実機未検証です。使用条件・既知の問題はREADMEとISSUES.mdを参照してください。
           '@ | Set-Content -Encoding utf8 preview-notes.md
-          gh release create "v0.4.0-preview.2" "ScreenReaderAssist-win-x64.zip" --prerelease --title "Screen Reader Assist v0.4.0-preview.2 (experimental)" --notes-file preview-notes.md
+          gh release create "v0.4.1-preview.1" "ScreenReaderAssist-win-x64.zip" --prerelease --title "Screen Reader Assist v0.4.1-preview.1 (experimental)" --notes-file preview-notes.md

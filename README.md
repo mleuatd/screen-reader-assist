@@ -5,7 +5,7 @@
 
 画面の任意範囲からWindowsの日本語OCRで文字を取り出し、インストール済みの音声合成エンジンで読み上げる、常駐型オープンソースアプリの**試作ソースコード**です。
 
-> **検証状況（2026-10-11）:** GitHub Actions のWindowsビルド・ロジックテストとWeb設定テストが成功。`win-x64` の配布アーティファクト生成を確認済み。v0.3のWindowsビルドと16件のロジックテストにも成功。Windows GUIでの操作、ゲーム・漫画OCR・タッチ入力などの実機検証は未実施。GitHub Releases の最新プレビューは v0.4.0-preview.2（ビルドと配布の結果を確認してください）。GitHub Pagesは初期有効化待ちですが、無料のGitHubファイル表示サービスで公開体験版を利用可能。試作版につき未検証機能に注意。
+> **検証状況（2026-10-11）:** GitHub Actions のWindowsビルド・ロジックテストとWeb設定テストが成功。`win-x64` の配布アーティファクト生成を確認済み。v0.3のWindowsビルドと16件のロジックテストにも成功。Windows GUIでの操作、ゲーム・漫画OCR・タッチ入力などの実機検証は未実施。GitHub Releases の最新プレビューは v0.4.1-preview.1（ビルドと配布の結果を確認してください）。GitHub Pagesは初期有効化待ちですが、無料のGitHubファイル表示サービスで公開体験版を利用可能。試作版につき未検証機能に注意。
 
 ## 主な機能（実装済みコード／動作未検証）
 
@@ -76,7 +76,7 @@ dotnet publish src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release -r wi
 
 ## 試験版を入手する
 
-- [Windows 11 x64向け試験版 ZIP (v0.4.0-preview.2)](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.4.0-preview.2/ScreenReaderAssist-win-x64.zip)
+- [Windows 11 x64向け試験版 ZIP (v0.4.1-preview.1)](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.4.1-preview.1/ScreenReaderAssist-win-x64.zip)
 - **注意**: 実機GUI検証は未実施。初回起動時のSmartScreen警告の可能性あり。Windows標準のOCR言語と読み上げ音声が必要です。
 
 ## ブラウザ体験版（アプリのインストール不要）
@@ -114,7 +114,7 @@ dotnet publish src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release -r wi
 - ドラッグして離すと囲んだ座標をOCR。短いタップの場合は周辺（最大360×160ピクセル）をOCR。Escで中止。
 - 選択中は通常アプリにクリック操作が伝わらないことを意図した構造ですが、UACセキュアデスクトップ、排他的フルスクリーン、他のTopMostウィンドウ等の特例があります。実機での入力非干渉テストは未完了。
 - 以前の設定ファイルの`magnifier.enableTripleClick:true`は読み込み時に無効化。グローバル3連クリックフックは使用しません。
-- 対応バージョンは次のプレビューリリース以降です。旧`v0.4.0-preview.2`はホットキーが違います。
+- 対応バージョンは次のプレビューリリース以降です。旧`v0.4.1-preview.1`はホットキーが違います。
 
 ## v0.3 カーソルを止めて読み上げ（試作）
 
@@ -138,3 +138,11 @@ dotnet publish src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release -r wi
 
 ### デジタル文字を取得する方式
 Windows UI Automationを優先し、取得できない場合はWindows標準のMicrosoft Active Accessibility（MSAA）も試します。両方で取得できない場合だけ、OCR補完がONなら画像を認識します。アプリのクリックを自動実行することはありません。
+
+## v0.4.1 画像から文字らしい範囲を自動推定してOCR再試行
+- Windows UI Automation、MSAAのデジタル文字情報を優先。文字情報がない場合は通常のWindows OCRを試す。
+- 通常OCRが見落とした場合に、画面内の明暗エッジが集まる領域をテキスト候補として最大2個抽出。
+- 候補を切り抜いて最大2倍に拡大し、コントラストを補正してWindows OCRを再試行する。
+- 認識文字が得られた場合に限って発声。OCRの結果がない画像から架空の文字列を推測して読み上げる機能ではない。
+- 通常の自動カーソルモード、漫画モード、手動で選択した領域の読み上げで利用可能。画像OCR補完をオフにすればデジタル文字読み上げのみになる。
+- 文字の境界を画像処理で推定する軽量な実験アルゴリズムであり、学習済みモデルによる高精度な吹き出し・文脈認識ではない。実際の漫画の縦書きや極小の文字、低解像度テキストの精度は未検証。

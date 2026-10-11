@@ -82,3 +82,7 @@ Windows向け自動テストは`tests/ScreenReaderAssist.Tests/`に存在する�
 - Webサイト/設定 `38128336957`：**成功**（Nodeテスト16/16件PASS）。
 - GitHub Releases: `https://github.com/mleuatd/screen-reader-assist/releases/tag/v0.4.0-preview.2`（Windows ZIP 74,551,895 bytes）。
 - Windowsの実画面でのUIA / MSAA COM値の取得、OCR精度、音声出力、マウス非干渉は**未検証**。自動テスト成功を実機検証済みとはみなさない。
+
+### v0.4.1 自動領域検出・OCR補完
+- 追加した試験：空白画像から文字を捏造しないこと、描画された文字付近の候補矩形、自動領域の座標、画像拡大とコントラスト補正の画素寸法を検査。
+- Windowsの自動ビルドとロジックテストの結果はワークフローで確認する。実画像OCRの精度と音声再生は未実施。
