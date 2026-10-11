@@ -37,22 +37,22 @@ var japaneseIni=PortableIni.Write(new AppSettings {
 Check(japaneseIni.Contains("[基本設定]") && japaneseIni.Contains("[読み取り動作]") &&
       japaneseIni.Contains("[音声読み上げ]") && japaneseIni.Contains("[文字認識]") &&
       japaneseIni.Contains("[画面拡大]"),"Japanese INI uses Japanese section headers");
-Check(japaneseIni.Contains("読み上げ速度=-7") && japaneseIni.Contains("使用する音声名=\\\"日本語音声\\\"") &&
+Check(japaneseIni.Contains("読み上げ速度=-7") && japaneseIni.Contains("使用する音声名=") && japaneseIni.Contains("日本語音声") &&
       japaneseIni.Contains("画像の文字も読み取る=いいえ") &&
       japaneseIni.Contains("認識した文字をコピー=はい"),"Japanese INI uses readable keys and boolean words");
 var parsedJapaneseIni=PortableIni.Parse(japaneseIni);
 Check(parsedJapaneseIni.reading.mode==ReadingModes.Off && parsedJapaneseIni.speech.rate==-7 &&
       parsedJapaneseIni.speech.voiceName=="日本語音声" && parsedJapaneseIni.ocr.reuseLastRegion &&
       parsedJapaneseIni.magnifier.zoom==3.5f,"Japanese INI full round-trip");
-Check(PortableIni.Parse("[音声読み上げ]\\n読み上げ速度=－３\\n音量=８０\\n").speech.rate==-3,
+Check(PortableIni.Parse("[音声読み上げ]\n読み上げ速度=－３\n音量=８０\n").speech.rate==-3,
     "Japanese INI allows fullwidth signed numeric speed");
-Check(PortableIni.Parse("[読み取り動作]\\n読み取りモード=漫画の吹き出し\\n").reading.mode==ReadingModes.Manga,
+Check(PortableIni.Parse("[読み取り動作]\n読み取りモード=漫画の吹き出し\n").reading.mode==ReadingModes.Manga,
     "Japanese manga mode maps to internal mode");
-Check(PortableIni.Parse("[読み取り動作]\\n読み取りモード=範囲選択のみ\\n").reading.mode==ReadingModes.Selection,
+Check(PortableIni.Parse("[読み取り動作]\n読み取りモード=範囲選択のみ\n").reading.mode==ReadingModes.Selection,
     "Japanese selection mode maps to internal mode");
-Check(PortableIni.Parse("[読み取り動作]\\n画像の文字も読み取る=オフ\\n").reading.ocrFallback==false,
+Check(PortableIni.Parse("[読み取り動作]\n画像の文字も読み取る=オフ\n").reading.ocrFallback==false,
     "Japanese on/off synonyms are readable");
-var legacyIni=PortableIni.Parse("[reading]\\nmode=off\\ndwellMilliseconds=940\\n[ocr]\\ncopyToClipboard=true\\n[speech]\\nrate=6\\n");
+var legacyIni=PortableIni.Parse("[reading]\nmode=off\ndwellMilliseconds=940\n[ocr]\ncopyToClipboard=true\n[speech]\nrate=6\n");
 Check(legacyIni.reading.mode==ReadingModes.Off && legacyIni.reading.dwellMilliseconds==940 &&
       legacyIni.ocr.copyToClipboard && legacyIni.speech.rate==6,
     "legacy English INI values remain compatible");

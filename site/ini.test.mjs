@@ -48,26 +48,26 @@ test('all user-editable sections and keys are written in Japanese',()=>{
 });
 test('Japanese mode labels are readable and round trip',()=>{
   for(const [label,mode] of [['カーソルで自動読み上げ','cursor'],['漫画の吹き出し','manga'],['範囲選択のみ','selection'],['自動読み上げ停止','off']]){
-    assert.equal(parseIni('[読み取り動作]\\n読み取りモード='+label).reading.mode,mode);
+    assert.equal(parseIni('[読み取り動作]\n読み取りモード='+label).reading.mode,mode);
     const input=structuredClone(defaults); input.reading.mode=mode;
     assert.equal(parseIni(writeIni(input)).reading.mode,mode);
   }
 });
 test('Japanese toggles and fullwidth numbers are accepted',()=>{
-  const parsed=parseIni('[音声読み上げ]\\n読み上げ速度=－３\\n音量=８０\\n' +
-    '[読み取り動作]\\nカーソル停止時間（ミリ秒）=１０００\\n画像の文字も読み取る=オフ');
+  const parsed=parseIni('[音声読み上げ]\n読み上げ速度=－３\n音量=８０\n' +
+    '[読み取り動作]\nカーソル停止時間（ミリ秒）=１０００\n画像の文字も読み取る=オフ');
   assert.equal(parsed.speech.rate,-3);
   assert.equal(parsed.speech.volume,80);
   assert.equal(parsed.reading.dwellMilliseconds,1000);
   assert.equal(parsed.reading.ocrFallback,false);
-  assert.equal(parseIni('[文字認識]\\n認識した文字をコピー=有効').ocr.copyToClipboard,true);
-  assert.equal(parseIni('[文字認識]\\n日本語の文字認識を優先=無効').ocr.preferJapanese,false);
+  assert.equal(parseIni('[文字認識]\n認識した文字をコピー=有効').ocr.copyToClipboard,true);
+  assert.equal(parseIni('[文字認識]\n日本語の文字認識を優先=無効').ocr.preferJapanese,false);
 });
 test('legacy English INI remains readable and converts into Japanese',()=>{
-  const old=parseIni('[app]\\nversion=1\\n[reading]\\nmode=manga\\ndwellMilliseconds=900\\nocrFallback=false\\n' +
-    '[speech]\\nrate=5\\nvolume=65\\nvoiceName="Test"\\n' +
-    '[ocr]\\ncopyToClipboard=true\\nreuseLastRegion=true\\npreferJapanese=false\\n' +
-    '[magnifier]\\nzoom=3.5');
+  const old=parseIni('[app]\nversion=1\n[reading]\nmode=manga\ndwellMilliseconds=900\nocrFallback=false\n' +
+    '[speech]\nrate=5\nvolume=65\nvoiceName="Test"\n' +
+    '[ocr]\ncopyToClipboard=true\nreuseLastRegion=true\npreferJapanese=false\n' +
+    '[magnifier]\nzoom=3.5');
   assert.equal(old.reading.mode,'manga');
   assert.equal(old.speech.rate,5);
   assert.equal(old.ocr.reuseLastRegion,true);
