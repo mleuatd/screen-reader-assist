@@ -1,5 +1,6 @@
 import {defaults,normalizeSettings} from './settings.js';
 import {parseIni,writeIni} from './ini.js';
+import {formatSpeechRate,speechRateAccessibilityText} from './speech-rate.js';
 import {openPortablePackage,createConfiguredPackage,downloadOfficialPackage,MAX_PACKAGE_BYTES} from './zip-package.js';
 
 const byId=id=>document.getElementById(id);
@@ -18,7 +19,8 @@ function syncModel(){
   model.magnifier.enableTripleClick=false;
   model.ocr.copyToClipboard=byId('copy').checked;
   model.ocr.preferJapanese=byId('japanese').checked;
-  byId('rateVal').textContent=String(model.speech.rate);
+  byId('rateVal').textContent=formatSpeechRate(model.speech.rate);
+  byId('rate').setAttribute('aria-valuetext',speechRateAccessibilityText(model.speech.rate));
   byId('volumeVal').textContent=String(model.speech.volume);
   byId('preview').textContent=writeIni(model);
 }
@@ -41,6 +43,11 @@ function downloadBlob(file,name){
   setTimeout(()=>URL.revokeObjectURL(url),30000);
 }
 for(const el of document.querySelectorAll('input:not([type=file]),select'))el.addEventListener('input',syncModel);
+byId('rate-reset').addEventListener('click',()=>{
+  byId('rate').value='0';
+  syncModel();
+  byId('rate').focus();
+});
 byId('save').addEventListener('click',()=>{
   syncModel();
   downloadBlob(new Blob([writeIni(model)],{type:'text/plain;charset=utf-8'}),'settings.ini');

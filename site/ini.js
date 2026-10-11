@@ -52,6 +52,7 @@ export function writeIni(untrusted){
     'ocrFallback='+b(s.reading.ocrFallback),
     '',
     '[speech]',
+    '; rate: -10=slower, 0=normal, +10=faster (21 steps)',
     'rate='+s.speech.rate,
     'volume='+s.speech.volume,
     'voiceName="'+voice+'"',

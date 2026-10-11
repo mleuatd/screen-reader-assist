@@ -16,11 +16,21 @@
     <section aria-labelledby="settingsHeading" id="settings" class="card"><h2 id="settingsHeading">設定してWindows版ZIPを作る</h2>
       <p>この画面の設定が<code>settings.ini</code>になります。Windows用ZIPに実行ファイルと一緒に入れてダウンロードできます。文字はメモ帳で直接編集できます。設定内容や取り込んだZIPはサーバーへアップロードしません。</p>
       <p><strong>使い方：</strong>下の項目を設定して「設定済みZIPを作成」を押してください。ブラウザが公式ZIPを取得できない場合は、上のWindows用ZIPを一度ダウンロードして、下の枠にドラッグしてください。</p>
+      <section class="speech-rate-panel" aria-labelledby="speech-rate-heading">
+        <h3 id="speech-rate-heading">音声の読み上げ速度</h3>
+        <label for="rate">スライダーを左右に動かして調整</label>
+        <output id="rateVal" for="rate" class="speed-current" aria-live="off">標準（0）</output>
+        <input id="rate" class="speed-slider" type="range" min="-10" max="10" step="1" value="0"
+               aria-describedby="rate-help" aria-valuetext="標準速度（0）">
+        <div class="speed-scale" aria-hidden="true"><span>遅い<br>−10</span><span>標準<br>0</span><span>速い<br>＋10</span></div>
+        <p id="rate-help" class="fine">21段階で調整できます。マウス・タッチで操作でき、キーボードの左右矢印でも1段階ずつ調整できます。0はWindows標準の速度です。カーソルが止まるまでの待ち時間とは別の設定です。</p>
+        <button type="button" id="rate-reset" class="button secondary">速度を標準（0）に戻す</button>
+      </section>
       <div class="formgrid">
         <div><label for="reading-mode">読み上げモード</label><select id="reading-mode"><option value="cursor">カーソルで自動読み上げ（標準）</option><option value="manga">漫画の吹き出しOCR（カーソル）</option><option value="selection">範囲選択のみ</option><option value="off">自動読み上げ停止</option></select></div>
         <div><label for="reading-dwell">カーソル静止の待ち時間（ミリ秒）</label><input id="reading-dwell" type="number" min="400" max="2000" step="100" value="750"></div>
         <div class="check"><input type="checkbox" id="reading-ocr" checked><label for="reading-ocr">デジタル文字が取得できない場合、画像OCRで補う（カーソルモード）</label></div>
-        <div><label for="rate">読み上げ速度（-10〜10）</label><input type="range" id="rate" min="-10" max="10" step="1" value="0" aria-describedby="rateVal"><output for="rate" id="rateVal">0</output></div>
+        
         <div><label for="volume">音量（0〜100）</label><input type="range" id="volume" min="0" max="100" value="100" step="5"><output for="volume" id="volumeVal">100</output></div>
         <div><label for="voiceName">インストール済み音声名（任意）</label><input type="text" id="voiceName" placeholder="空欄なら日本語音声を自動選択" maxlength="100"></div>
         <div><label for="zoom">画面拡大倍率</label><select id="zoom"><option value="1.5">1.5倍</option><option value="2" selected>2倍</option><option value="3">3倍</option><option value="4">4倍</option><option value="5">5倍</option><option value="6">6倍</option></select></div>
