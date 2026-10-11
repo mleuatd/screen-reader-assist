@@ -140,4 +140,55 @@ Check(System.Text.Encoding.ASCII.GetString(cueWave,0,4)=="RIFF" &&
     "selection cue has a valid RIFF WAV header and 22050 Hz sample rate");
 Check(cueWave.Length<15000,
     "selection cue is short and does not require loading an audio file");
+var safeDriver=new FakeDisplayTransform{Zoom=3.5f,Left=111,Top=222};
+var startupRecovered=MagnificationRecovery.Recover(safeDriver,false);
+Check(startupRecovered.Successful && startupRecovered.Changed && safeDriver.Zoom==1f &&
+      safeDriver.Left==0 && safeDriver.Top==0 && safeDriver.ResetCalls==1,
+      "abandoned fullscreen zoom resets to 100 percent on startup");
+Check(safeDriver.FinishCalls==1,"recovery frees native magnification resources");
+var unmodifiedDriver=new FakeDisplayTransform();
+var alreadyNormal=MagnificationRecovery.Recover(unmodifiedDriver,false);
+Check(alreadyNormal.Status=="初期状態" && unmodifiedDriver.ResetCalls==0,
+      "startup leaves a normal display unchanged");
+var systemMagnifier=new FakeDisplayTransform{Zoom=4f,SystemMagnifier=true};
+var skipped=MagnificationRecovery.Recover(systemMagnifier,false);
+Check(skipped.Status=="スキップ" && systemMagnifier.ResetCalls==0 &&
+      systemMagnifier.InitializeCalls==0 && systemMagnifier.Zoom==4f,
+      "startup preserves Windows Magnifier used by a visually impaired user");
+var explicitDriver=new FakeDisplayTransform{Zoom=2f,SystemMagnifier=true};
+Check(MagnificationRecovery.Recover(explicitDriver,true).Successful &&
+      explicitDriver.ResetCalls==1 && explicitDriver.Zoom==1f,
+      "explicit repair can restore screen even when Windows Magnifier is running");
+var unable=new FakeDisplayTransform{Zoom=3f,AllowReset=false};
+Check(MagnificationRecovery.Recover(unable,true).Status=="失敗" &&
+      unable.FinishCalls==1 && unable.Zoom==3f,
+      "failed restore is reported, and native resources are still released");
+var unavailable=new FakeDisplayTransform{InitializeOk=false,Zoom=3f};
+Check(MagnificationRecovery.Recover(unavailable,false).Status=="失敗" &&
+      unavailable.ResetCalls==0,
+      "missing magnification API is reported without changing display");
+using(var oldZoom=new MagnificationService()) {
+    Check(!oldZoom.Start(new Point(100,100),3.0f) && !oldZoom.Active,
+          "deprecated full-screen zoom cannot alter the desktop even if called");
+}
 Console.WriteLine("Finished all logic smoke tests. OCR and live GUI tests NOT executed by this test suite.");
+
+sealed class FakeDisplayTransform : MagnificationRecovery.IDriver
+{
+    public float Zoom=1f;
+    public int Left,Top,ResetCalls,FinishCalls,InitializeCalls;
+    public bool SystemMagnifier,AllowReset=true,InitializeOk=true;
+    public bool WindowsMagnifierRunning()=>SystemMagnifier;
+    public bool Initialize(){InitializeCalls++;return InitializeOk;}
+    public bool Read(out float factor,out int x,out int y)
+    {
+        factor=Zoom;x=Left;y=Top;return true;
+    }
+    public bool Reset()
+    {
+        ResetCalls++;
+        if(!AllowReset)return false;
+        Zoom=1f;Left=0;Top=0;return true;
+    }
+    public void Finish(){FinishCalls++;}
+}
