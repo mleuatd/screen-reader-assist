@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Text.Json;
 
 if(args.Contains("--benchmark-tts",StringComparer.OrdinalIgnoreCase)) {NativeTtsBenchmark.Run();return;}
+if(args.Contains("--benchmark-tts-ja",StringComparer.OrdinalIgnoreCase)) {Environment.ExitCode=JapaneseTtsBenchmark.Run();return;}
 
 static void Check(bool condition,string message) {if(!condition) throw new Exception("FAIL: "+message);Console.WriteLine("PASS: "+message);}
 var settings=AppSettings.Normalize(new AppSettings {speech = new SpeechSettings{rate=99,volume=-12}, magnifier=new MagnifierSettings{zoom=30}});

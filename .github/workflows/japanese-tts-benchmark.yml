@@ -1,0 +1,66 @@
+name: Japanese SAPI speech synthesis benchmark
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/japanese-tts-benchmark.yml'
+      - 'tests/ScreenReaderAssist.Tests/JapaneseTtsBenchmark.cs'
+      - 'src/ScreenReaderAssist/SpeechService.cs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  japanese-tts:
+    runs-on: windows-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Diagnostic Japanese speech feature state
+        shell: pwsh
+        run: |
+          Write-Host "Windows: $([Environment]::OSVersion.VersionString)"
+          Get-WindowsCapability -Online -Name 'Language.TextToSpeech~~~ja-JP~0.0.1.0' | Format-List Name, State
+          foreach ($reg in @('HKLM:\SOFTWARE\Microsoft\Speech\Voices\Tokens', 'HKLM:\SOFTWARE\Microsoft\Speech_OneCore\Voices\Tokens')) {
+            Write-Host "Registry voice tokens: $reg"
+            if (Test-Path $reg) { Get-ChildItem $reg | Select-Object -ExpandProperty PSChildName }
+          }
+      - name: Try installing official Japanese text-to-speech capability (ephemeral runner)
+        shell: pwsh
+        timeout-minutes: 5
+        continue-on-error: true
+        run: |
+          $name='Language.TextToSpeech~~~ja-JP~0.0.1.0'
+          $state=Get-WindowsCapability -Online -Name $name
+          if ($state.State -eq 'Installed') {
+            Write-Host 'JA TTS CAPABILITY ALREADY INSTALLED'
+          } else {
+            Write-Host 'JA TTS CAPABILITY INSTALL ATTEMPT from official Windows Update'
+            try {
+              $result=Add-WindowsCapability -Online -Name $name -ErrorAction Stop
+              Write-Host "JA TTS CAPABILITY INSTALL RESULT: $($result | Out-String)"
+            } catch {
+              Write-Host "JA TTS CAPABILITY INSTALL UNAVAILABLE: $($_.Exception.Message)"
+            }
+          }
+      - name: Build test program
+        shell: pwsh
+        run: dotnet build tests/ScreenReaderAssist.Tests/ScreenReaderAssist.Tests.csproj -c Release
+      - name: Enumerate and benchmark every installed Japanese SAPI voice
+        shell: pwsh
+        timeout-minutes: 4
+        continue-on-error: true
+        run: |
+          dotnet run --project tests/ScreenReaderAssist.Tests/ScreenReaderAssist.Tests.csproj -c Release --no-build -- --benchmark-tts-ja
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "JA TTS BENCHMARK NOT VERIFIED: exit $LASTEXITCODE"
+            exit $LASTEXITCODE
+          }
+      - name: Report Japanese capability state after attempt
+        shell: pwsh
+        run: |
+          Get-WindowsCapability -Online -Name 'Language.TextToSpeech~~~ja-JP~0.0.1.0' | Format-List Name,State
