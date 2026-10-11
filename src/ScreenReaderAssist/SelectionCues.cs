@@ -1,4 +1,3 @@
-using System.Drawing;
 using System.Media;
 using System.Text;
 
@@ -18,27 +17,25 @@ public static class SelectionCues
     private static readonly byte[] EndWave=CreateWave(new[]{660,440});
 
     private static readonly object Gate=new();
+    private static readonly MemoryStream StartStream=new(StartWave,writable:false);
+    private static readonly MemoryStream EndStream=new(EndWave,writable:false);
+    private static readonly SoundPlayer StartPlayer=new(StartStream);
+    private static readonly SoundPlayer EndPlayer=new(EndStream);
 
     // Expose only WAV bytes for deterministic automated tests (no speaker required).
     public static ReadOnlyMemory<byte> StartWaveData=>StartWave;
     public static ReadOnlyMemory<byte> EndWaveData=>EndWave;
 
-    public static void PlayStart()=>Play(StartWave,"開始");
-    public static void PlayEnd()=>Play(EndWave,"終了");
+    public static void PlayStart()=>Play(StartPlayer,"開始");
+    public static void PlayEnd()=>Play(EndPlayer,"終了");
 
-    private static void Play(byte[] wave,string name)
+    private static void Play(SoundPlayer player,string name)
     {
         try
         {
-            // Fire-and-forget audio with separately owned streams so sound continues
-            // while the selection overlay opens/closes. SoundPlayer.Play is nonblocking.
-            lock(Gate)
-            {
-                using var stream=new MemoryStream(wave,writable:false);
-                using var player=new SoundPlayer(stream);
-                player.Load();
-                player.Play();
-            }
+            // Persist the players and their streams for the lifetime of the process:
+            // Play is asynchronous, so disposing the stream here could cut off the sound.
+            lock(Gate) player.Play();
             DiagnosticLog.Info("操作音",$"{name}の確認音を再生要求しました。");
         }
         catch(Exception ex)

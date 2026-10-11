@@ -131,7 +131,7 @@ Check(diagnosticEvents==1 && DiagnosticLog.Snapshot().Contains("[テスト]"),
 Check(!string.IsNullOrEmpty(DiagnosticLog.Snapshot()),"diagnostic snapshot is available");
 Check(SelectionCues.StartWaveData.Length>44 && SelectionCues.EndWaveData.Length>44,
     "selection start and end confirmation cues contain WAV audio data");
-Check(!SelectionCues.StartWaveData.Span.SequenceEqual(SelectionCues.EndWaveData.Span),
+Check(!SelectionCues.StartWaveData.ToArray().SequenceEqual(SelectionCues.EndWaveData.ToArray()),
     "selection start and end tones have different waveforms");
 var cueWave=SelectionCues.StartWaveData.ToArray();
 Check(System.Text.Encoding.ASCII.GetString(cueWave,0,4)=="RIFF" &&
