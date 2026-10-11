@@ -28,7 +28,7 @@ test('each speech slider step writes and reloads the same value from portable IN
     const settings=structuredClone(defaults);
     settings.speech.rate=rate;
     const ini=writeIni(settings);
-    assert.match(ini,new RegExp('\\nrate='+rate+'\\n'));
+    assert.match(ini,new RegExp('\\n読み上げ速度='+rate+'\\n'));
     assert.equal(parseIni(ini).speech.rate,rate);
   }
 });
