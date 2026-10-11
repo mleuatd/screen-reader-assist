@@ -11,3 +11,6 @@
 - Windows CIとWeb Nodeテストの結果を確認する。失敗した場合は修正する。
 - `v0.6.1-preview.1` を公開し、更新されたEXEと日本語INIを同梱したZIPを検証する。
 - 現行EXEが起動時にINIを読み設定保存できることはWindows実機で別途検証が必要。旧EXEに新INIをコピーしないこと。
+
+- Actions `38155872150` Windows CI成功（62件）、`38155975477` Web 33件合格、`38155975414` v0.6.1-preview.1 Release成功。
+- ユーザー実機では最新v0.6.1-preview.1のEXEとsettings.iniをセットで展開・起動すること。
