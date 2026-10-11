@@ -1,11 +1,11 @@
-# Screen Reader Assist — Windows 11 視覚障害支援アプリ（試作 v0.5.1）
+# Screen Reader Assist — Windows 11 視覚障害支援アプリ（試作 v0.6）
 
 **[インストール不要でブラウザ体験（スマホ・PC）](https://raw.githack.com/mleuatd/screen-reader-assist/main/site/demo.html)** | [Web設定画面（GitHub経由）](https://raw.githack.com/mleuatd/screen-reader-assist/main/site/index.html)
 
 
 画面の任意範囲からWindowsの日本語OCRで文字を取り出し、インストール済みの音声合成エンジンで読み上げる、常駐型オープンソースアプリの**試作ソースコード**です。
 
-> **検証状況（2026-10-11）:** GitHub Actions のWindowsビルド・ロジックテストとWeb設定テストが成功。`win-x64` の配布アーティファクト生成を確認済み。v0.5のWindowsビルドと43件のロジックテストに成功。Windows GUIでの操作、ゲーム・漫画OCR・タッチ入力などの実機検証は未実施。GitHub Releases 最新プレビュー v0.5.1-preview.1 を公開済み。GitHub Pagesは初期有効化待ちですが、無料のGitHubファイル表示サービスで公開体験版を利用可能。試作版につき未検証機能に注意。
+> **検証状況（2026-10-11）:** GitHub Actions のWindowsビルド・ロジックテストとWeb設定テストが成功。`win-x64` の配布アーティファクト生成を確認済み。v0.5のWindowsビルドと43件のロジックテストに成功。Windows GUIでの操作、ゲーム・漫画OCR・タッチ入力などの実機検証は未実施。GitHub Releases 最新プレビュー v0.6.0-preview.1 を公開済み。GitHub Pagesは初期有効化待ちですが、無料のGitHubファイル表示サービスで公開体験版を利用可能。試作版につき未検証機能に注意。
 
 ## 主な機能（実装済みコード／動作未検証）
 
@@ -17,7 +17,7 @@
 - `Alt + Shift + Z`: Windows Magnification APIによる一時的な画面拡大切り替え（実験的）。
 - 他アプリへの干渉を避けるため、グローバル3回クリック検出を廃止。範囲読み上げでは専用の最前面画面でのみ操作を受け付けます。
 - 音声の種類・速度（-10〜10）・音量（0〜100）・倍率を設定画面から変更。
-- 設定JSONの入出力、Web設定サイト（オフラインでも静的配信可能）。
+- 実行ファイルと同じフォルダーの設定INIを読み書き。Web上でINIを編集し、既存ZIPを取り込んで設定済みZIPとして再出力できる。
 
 ## 必要環境
 
@@ -76,7 +76,7 @@ dotnet publish src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release -r wi
 
 ## 試験版を入手する
 
-- [Windows 11 x64向け試験版 ZIP (v0.5.1-preview.1)](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.5.1-preview.1/ScreenReaderAssist-win-x64.zip)
+- [Windows 11 x64向け試験版 ZIP (v0.6.0-preview.1)](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.6.0-preview.1/ScreenReaderAssist-win-x64.zip)
 - **注意**: 実機GUI検証は未実施。初回起動時のSmartScreen警告の可能性あり。Windows標準のOCR言語と読み上げ音声が必要です。
 
 ## ブラウザ体験版（アプリのインストール不要）
@@ -114,7 +114,7 @@ dotnet publish src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release -r wi
 - ドラッグして離すと囲んだ座標をOCR。短いタップの場合は周辺（最大360×160ピクセル）をOCR。Escで中止。
 - 選択中は通常アプリにクリック操作が伝わらないことを意図した構造ですが、UACセキュアデスクトップ、排他的フルスクリーン、他のTopMostウィンドウ等の特例があります。実機での入力非干渉テストは未完了。
 - 以前の設定ファイルの`magnifier.enableTripleClick:true`は読み込み時に無効化。グローバル3連クリックフックは使用しません。
-- 対応バージョンは次のプレビューリリース以降です。旧`v0.5.1-preview.1`はホットキーが違います。
+- 対応バージョンは次のプレビューリリース以降です。旧`v0.6.0-preview.1`はホットキーが違います。
 
 ## v0.3 カーソルを止めて読み上げ（試作）
 
@@ -163,3 +163,15 @@ Windows UI Automationを優先し、取得できない場合はWindows標準のM
 - **したがって日本語の実波形生成速度や発音品質は未計測**。英語の17.8ms等の値を日本語の値に転用しない。日本語の文章サンプル3種類×話速3段階で、見つかった日本語SAPI音声すべてをWAV生成するテストコードを追加。
 - Windows 11で日本語音声が使用可能な環境向けに、アプリの設定画面の「日本語音声を診断」ボタンと通知領域メニュー「日本語音声の性能を検証」を追加。非再生のWAV生成時間を測り、`%LOCALAPPDATA%\ScreenReaderAssist\JapaneseVoiceDiagnostic.txt`に結果を保存する。音声を耳で聞いたときの感想・遅延の実測ではない。
 - 本機能では個人の画面や音声データを外部送信せず、ローカル音声エンジンだけで計測する。診断ボタンを押すまでは追加の計測負荷なし。
+
+## v0.6 EXE + settings.ini の持ち運べる配布構成
+
+- アプリはC#／.NET 8 Windows Forms製。配布ZIPの中身は`ScreenReaderAssist.exe`と同じ階層に`settings.ini`を置きます（自己完結型Windows版のため同フォルダーに補助DLL等がある場合もあります）。
+- INIはUTF-8で、`[reading]`・`[speech]`・`[ocr]`・`[magnifier]`の項目をメモ帳で編集できます。独自の追加ソフトは不要。
+- 起動時は`AppContext.BaseDirectory/settings.ini`を優先。古いJSON設定を使っていた場合はINIがなければ`%LOCALAPPDATA%/ScreenReaderAssist/settings.json`から設定を読み、保存時はEXE横の`settings.ini`へ移行します（JSONは削除しない）。
+- アプリの設定ウィンドウからの保存・インポート・エクスポートもINIが基本（旧JSONの取り込みも可能）。
+- **Web設定画面**：`settings.ini`のみ保存／コピー、既存INI・JSON・Windows用ZIPのドラッグ＆ドロップ読込、INIの編集、設定済みWindows版ZIPの出力に対応。
+- Web画面は公式ZIPの自動取得を試行しますが、ブラウザのCORS制限で失敗する環境では、`Windows用試用版をダウンロード`で公式ZIPを先に保存してWeb画面にドラッグ＆ドロップしてください。それ以降は同じ画面内で設定を編集してZIPとして保存できます。
+- ZIP生成はページ内のMITライセンスJSZipを使用し、データやINI内容をWebサーバーにアップロードしません。ただし公式ZIPのダウンロードはGitHubから行います。
+- 持ち込んだZIPには任意の実行ファイルを含められるため、実行するファイルは必ず公式の配布ZIPなど信頼できるものを使用してください。
+- 注意：インストール先フォルダーが書き込み禁止ならINIの上書き保存は失敗します。解凍した書き込み可能なフォルダーで実行してください。

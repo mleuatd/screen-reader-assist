@@ -1,8 +1,8 @@
-# 日本語音声の検証状況（2026-10-11）
-1. 日本語SAPI音声の検証Actions `38130885005`では日本語0種類、パック導入が5分でタイムアウト（無理に英語で代替して日本語性能と扱わない）。
-2. OneCoreの検証Actions `38131159339`でも日本語0種類。OneCoreとSAPIは別々の音声セット。
-3. アプリの設定画面と通知領域に日本語音声の速度診断ボタンを追加済み。`%LOCALAPPDATA%\ScreenReaderAssist\JapaneseVoiceDiagnostic.txt`へ結果を記録。
-4. Windows最新ビルド `38131598189` 成功。46件のテスト `38131522337` 成功。プレリリース `v0.5.1-preview.1`（ZIP 74,585,175バイト）は公開済み。
-5. ja-JP音声が導入された日本語Windows 11で診断を実行し、声ごとの初回/温間、各話速・文字量のWAV生成時間を測定。
-6. WinRT OneCore側で日本語音声が利用可能でも、現状のアプリ本体はSystem.Speech SAPIを利用。利用音声と性能を混同しない。
-7. GUI読み上げ開始までの時間や漢字の正しい読み方は、音声が入った実機で別途確認する。
+# v0.6 ポータブルINI / ZIP再編集
+1. 正本はGitHub main。INI・ZIPサポートを追加、従来の読み上げモードは維持。
+2. Windows CIでINI parserのテスト、アプリをビルドし、ZIPのEXE/INI同階層を確認。
+3. NodeでWebのINI/JSZipテストを通す。zipの取り込み・変更・再ZIP化を検証。
+4. GitHub Releasesにv0.6.0-preview.1を公開し、Webページの直接ダウンロード導線を確認。
+5. Windows実機でsettings.iniのUTF-8・日本語音声名・起動読込・設定保存・再起動反映を確認。
+6. Webが公式GitHub ZIPを直接取得できない場合は公式ZIPを手動ダウンロードし、ドラッグ＆ドロップしてから設定済みZIPを作成する。
+7. 公式GitHub Pagesの初期有効化は未完了。ブラウザ体験版と設定ページはraw.githack.com経由。

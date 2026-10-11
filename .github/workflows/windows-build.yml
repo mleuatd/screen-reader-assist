@@ -29,6 +29,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Publish portable zip input
         run: dotnet publish src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
+      - name: Add portable INI beside the EXE
+        shell: pwsh
+        run: |
+          Copy-Item -Path settings.ini -Destination publish/settings.ini -Force
+          if (-not (Test-Path 'publish/ScreenReaderAssist.exe')) { throw 'Missing portable EXE' }
+          if (-not (Test-Path 'publish/settings.ini')) { throw 'Missing portable INI' }
       - name: ZIP app
         shell: pwsh
         run: Compress-Archive -Path publish\* -DestinationPath ScreenReaderAssist-win-x64.zip

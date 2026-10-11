@@ -1,6 +1,6 @@
 # Windows 11での試用手順（実験版）
 
-1. [試用版ZIP](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.5.1-preview.1/ScreenReaderAssist-win-x64.zip)を取得し、任意のフォルダーに展開します。
+1. [試用版ZIP](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.6.0-preview.1/ScreenReaderAssist-win-x64.zip)を取得し、任意のフォルダーに展開します。
 2. 展開した`ScreenReaderAssist.exe`を起動します。署名されていないためWindows SmartScreen警告が表示される場合があります。信頼できない場合は起動しないでください。
 3. 起動すると通知領域に常駐します。設定を開くには通知領域のアイコンをダブルクリックします。
 4. `Ctrl+Alt+R`で範囲選択、`Alt+Shift+M`で吹き出しクリック、`Alt+Shift+U`でフォーカス中のUI文字取得、`Alt+Shift+S`で停止、`Alt+Shift+P`で一時停止・再開、`Alt+Shift+Z`で一時拡大です。
@@ -33,3 +33,11 @@
 
 ## 日本語音声の速度を確認する（v0.5.1）
 アプリの設定画面にある「日本語音声を診断」を押すと、PCにインストールされた日本語SAPI音声をすべて調べ、短文・長文を3段階の話速でWAV合成して所要時間を表示します。結果は`%LOCALAPPDATA%\ScreenReaderAssist\JapaneseVoiceDiagnostic.txt`に保存されます。日本語SAPI音声がなければ、そのことを表示して診断を終了します。日本語音声がない場合でも英語を日本語テストとして記録しません。
+
+## v0.6 ZIPとINIの設定方法
+1. [Web設定画面](https://raw.githack.com/mleuatd/screen-reader-assist/main/site/index.html)で設定を調整し、「設定済みWindows版ZIPを作成してダウンロード」を選択します。
+2. ブラウザが公式ZIPにアクセスできない場合は、画面上の「Windows用試用版をダウンロード」で公式ZIPを保存し、Web設定画面へドラッグ＆ドロップします。
+3. ZIP内のINI設定が自動的に読み込まれます。設定を編集したら「設定済みWindows版ZIPを作成」でZIPを保存できます。
+4. 展開先で`ScreenReaderAssist.exe`と`settings.ini`を同じフォルダーに置きます。起動時に設定を読み、変更・保存すると同じINIファイルが更新されます。
+5. `settings.ini`を右クリック→メモ帳で直接変更することもできます。編集後にアプリを再起動すると反映されます。UTF-8形式のまま保存してください。
+6. 既存INI・旧JSONファイルはWeb画面にドラッグ＆ドロップして内容を読み込めます。設定だけ取り込んだ場合も、設定済みZIPの作成には公式Windows ZIPが必要です。

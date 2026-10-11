@@ -119,3 +119,10 @@ Windows向け自動テストは`tests/ScreenReaderAssist.Tests/`に存在する�
 - 最新ソース Windows CI `38131598189`：**成功**。
 - リリース Actions `38131598185`：**成功**。試用版 `v0.5.1-preview.1` ZIP 74,585,175バイト公開済み。
 - OneCore Actions `38131159339`：日本語音声0、SAPI Actions `38130885005`：日本語音声0。**日本語での波形生成時間・発音は未計測**。
+
+### v0.6 INI/ZIPテスト
+- Windows C#ロジックテストにINIの日本語音声名、全モード、OCR設定、旧グローバル3クリック無効化、バージョン検査、UTF-8読み書きを追加。
+- Web NodeテストにINI往復・コメント・不明キー・数値丸め／限界値・旧設定の扱いを追加。
+- Web NodeテストでJSZipの実ZIPを生成し、EXE内容と追加ファイルを保持しつつ、INIだけ変更して再エクスポートすることを検証する。
+- 配布ZIPにEXEとINIが同じ場所にあることをGitHub Windows Actionsで検査する。
+- 外部GitHub ZIPのブラウザ直接fetchはCORS/配布CDNに依存しうるため実機Webでの検証が別途必要。
