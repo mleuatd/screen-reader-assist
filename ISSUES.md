@@ -29,3 +29,5 @@
 - OPEN-18：System.Speechの実音声生成速度はWindowsの音声エンジン・文字数・再生設定に依存。GitHub ActionsのWAV合成計測はユーザーWindowsの実音声速度を保証せず、音声合成の実出力がない環境では未測定になる。音声を選び直さない最適化の品質・継続性はWindows実機で検証が必要。
 
 - OPEN-19 日本語SAPI/OneCore音声速度：GitHub Windows runnerには日本語音声が存在しない。公式Language.TextToSpeech capabilityの追加は5分タイムアウト。日本語の実測は未実施。Windows 11で利用可能な日本語音声の種類と正しい読み方は実機測定が必要。v0.5.1でワンクリックの日本語SAPI速度診断を実装。
+
+- OPEN-20 実機でCtrl+Alt+R入力後の読み上げが動かない報告。ログなしではキー登録、選択オーバーレイ、Windows OCR言語、SAPI音声/音量のどこで失敗か特定できない。v0.6.3でEXE直下ログとリアルタイム診断を追加し、実機ログ提出待ち。読み取った文章の生ログは保持しない。

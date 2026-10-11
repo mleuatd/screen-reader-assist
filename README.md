@@ -1,11 +1,11 @@
-# Screen Reader Assist — Windows 11 視覚障害支援アプリ（試作 v0.6.1）
+# Screen Reader Assist — Windows 11 視覚障害支援アプリ（試作 v0.6.3）
 
 **[インストール不要でブラウザ体験（スマホ・PC）](https://raw.githack.com/mleuatd/screen-reader-assist/main/site/demo.html)** | [Web設定画面（GitHub経由）](https://raw.githack.com/mleuatd/screen-reader-assist/main/site/index.html)
 
 
 画面の任意範囲からWindowsの日本語OCRで文字を取り出し、インストール済みの音声合成エンジンで読み上げる、常駐型オープンソースアプリの**試作ソースコード**です。
 
-> **検証状況（2026-10-11）:** GitHub Actions のWindowsビルド・ロジックテストとWeb設定テストが成功。`win-x64` の配布アーティファクト生成を確認済み。v0.5のWindowsビルドと43件のロジックテストに成功。Windows GUIでの操作、ゲーム・漫画OCR・タッチ入力などの実機検証は未実施。GitHub Releases 最新プレビュー v0.6.2-preview.1 を公開済み。GitHub Pagesは初期有効化待ちですが、無料のGitHubファイル表示サービスで公開体験版を利用可能。試作版につき未検証機能に注意。
+> **検証状況（2026-10-11）:** GitHub Actions のWindowsビルド・ロジックテストとWeb設定テストが成功。`win-x64` の配布アーティファクト生成を確認済み。v0.5のWindowsビルドと43件のロジックテストに成功。Windows GUIでの操作、ゲーム・漫画OCR・タッチ入力などの実機検証は未実施。GitHub Releases 最新プレビュー v0.6.3-preview.1 を公開済み。GitHub Pagesは初期有効化待ちですが、無料のGitHubファイル表示サービスで公開体験版を利用可能。試作版につき未検証機能に注意。
 
 ## 主な機能（実装済みコード／動作未検証）
 
@@ -76,7 +76,7 @@ dotnet publish src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release -r wi
 
 ## 試験版を入手する
 
-- [Windows 11 x64向け試験版 ZIP (v0.6.2-preview.1)](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.6.2-preview.1/ScreenReaderAssist-win-x64.zip)
+- [Windows 11 x64向け試験版 ZIP (v0.6.3-preview.1)](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.6.3-preview.1/ScreenReaderAssist-win-x64.zip)
 - **注意**: 実機GUI検証は未実施。初回起動時のSmartScreen警告の可能性あり。Windows標準のOCR言語と読み上げ音声が必要です。
 
 ## ブラウザ体験版（アプリのインストール不要）
@@ -114,7 +114,7 @@ dotnet publish src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release -r wi
 - ドラッグして離すと囲んだ座標をOCR。短いタップの場合は周辺（最大360×160ピクセル）をOCR。Escで中止。
 - 選択中は通常アプリにクリック操作が伝わらないことを意図した構造ですが、UACセキュアデスクトップ、排他的フルスクリーン、他のTopMostウィンドウ等の特例があります。実機での入力非干渉テストは未完了。
 - 以前の設定ファイルの`magnifier.enableTripleClick:true`は読み込み時に無効化。グローバル3連クリックフックは使用しません。
-- 対応バージョンは次のプレビューリリース以降です。旧`v0.6.2-preview.1`はホットキーが違います。
+- 対応バージョンは次のプレビューリリース以降です。旧`v0.6.3-preview.1`はホットキーが違います。
 
 ## v0.3 カーソルを止めて読み上げ（試作）
 
@@ -197,3 +197,15 @@ Web設定画面は速度のスライダーを大きく表示し、遅い（-10�
 - 設定画面右上の**×**や「通知領域に戻る」ボタンは**ウィンドウを隠すだけ**で、読み上げとホットキーは継続します。設定ウィンドウが開いている間はカーソル読み上げを一時停止して誤読・操作干渉を減らします。
 - 完全にアプリを終了するには通知領域アイコンの右クリックメニューから「終了」を選びます。Windowsシャットダウン時には終了を妨げない設定。
 - 既存の設定は`settings.ini`をそのまま使用し、以前のZIPやWeb設定から生成したINIも引き続き互換です。実際のWindows 11 GUIでのアイコン・表示/非表示・音声の検証は未実施です。
+
+## v0.6.3 実機不具合調査用ログと設定画面のリアルタイム診断
+
+- `ScreenReaderAssist.exe` 起動時に**同じフォルダー**へ `ScreenReaderAssist.log` を自動作成。以降、読み取り・音声再生中は設定画面が隠れていても継続記録。
+- ログは日時付きUTF-8テキスト。約2MBに達すると `ScreenReaderAssist.previous.log` に古いログを退避。専用ソフト不要でメモ帳で開けます。
+- 起動と二重起動、Windowsのホットキー登録成否・Windowsエラー番号、`Ctrl+Alt+R`の受信、範囲選択画面表示・キャンセル、OCR開始/成功/失敗・経過時間・文字数、カーソル静止、SAPIへの読み上げ要求/開始/完了/キャンセル、例外を記録します。
+- 設定画面の**「動作状況（リアルタイム）」**タブはログを実時間表示します。画面上部の「状態」には自動読み上げの稼働状態と`Ctrl+Alt+R`の登録状態を表示。設定画面表示中は誤動作を防ぐため自動カーソル読み上げは一時停止する既存仕様を維持。
+- 設定画面の「動作ログを開く」でログファイルをメモ帳などで開けます。「ログをコピー」で最近の診断記録をコピーできます。通知領域メニューにも「動作ログを表示」を追加。
+- **「音声テスト」**ボタンと通知領域の同名メニューを追加。画像OCRを使わずに固定の日本語テスト音声を再生し、SAPIの再生開始や失敗をログで確認できます。
+- **プライバシー:** 画面の画像、OCRで読んだ文章、クリップボード内容、表示中のサイトURL、カーソル座標は診断ログに保存しません。ただしWindows/.NET例外メッセージにはファイルパスなどの環境情報が含まれる可能性があります。ログ共有前に確認してください。
+- **ログ書き込み権限:** EXEを読み取り専用のフォルダーに置くとログ保存に失敗します。書き込み可能な場所へZIPを解凍してください。失敗時は設定画面の稼働状態にエラーを表示します。
+- `Ctrl+Alt+R`は静止画ベースの範囲選択画面を起動し、**そこでクリック・ドラッグ・Enterを押すとOCR**します。押しただけで必ず音声が出る仕組みではありません。何も起きない場合はログでホットキー登録/画面表示を確認します。
