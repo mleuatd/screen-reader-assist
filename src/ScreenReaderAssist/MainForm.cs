@@ -240,7 +240,7 @@ public sealed class MainForm : Form
     }
     private void CursorTimerTick(object? sender,EventArgs e)
     {
-        if(_busy || Visible || !ReadingModes.IsAuto(_settings.reading.mode)) return;
+        if(!TrayReadingPolicy.CanAutomaticallyRead(Visible,_busy,_settings.reading.mode)) return;
         var point=Cursor.Position;
         var now=Environment.TickCount64;
         if(Math.Abs(point.X-_lastPointer.X)>10 || Math.Abs(point.Y-_lastPointer.Y)>10) {
@@ -307,7 +307,7 @@ public sealed class MainForm : Form
         _busy=true;
         _cursorGeneration++;
         try {
-            Hide();
+            HideSettings();
             // Let Windows restore the previous application before capturing it.
             await Task.Delay(80);
             using var sel=new SelectionForm();
@@ -326,7 +326,7 @@ public sealed class MainForm : Form
         if(_busy)return;
         _busy=true;
         try {
-            Hide();
+            HideSettings();
             await Task.Delay(80);
             using var sel=new SelectionForm(balloonMode:true);
             if(sel.ShowDialog()!=DialogResult.OK || sel.ClickScreenPoint is null)return;

@@ -107,4 +107,15 @@ var japaneseDiagnostic=JapaneseSpeechDiagnostic.Run();
 Check(File.Exists(japaneseDiagnostic.SavedTo),"Japanese voice diagnostic writes a local report");
 Check(japaneseDiagnostic.Report.Contains("日本語SAPI音声:"),"Japanese voice diagnostic reports voice availability explicitly");
 SpeechDispatchTests.Run();
+Check(TrayReadingPolicy.CanAutomaticallyRead(false,false,ReadingModes.Cursor),
+    "tray stays active: default cursor automatic reading works with settings hidden");
+Check(TrayReadingPolicy.CanAutomaticallyRead(false,false,ReadingModes.Manga),
+    "tray stays active: manga hover OCR works with settings hidden");
+Check(!TrayReadingPolicy.CanAutomaticallyRead(true,false,ReadingModes.Cursor),
+    "opening settings pauses hover reading to prevent unwanted speech");
+Check(!TrayReadingPolicy.CanAutomaticallyRead(false,true,ReadingModes.Cursor),
+    "manual selection pauses automatic hover reading");
+Check(!TrayReadingPolicy.CanAutomaticallyRead(false,false,ReadingModes.Selection) &&
+      !TrayReadingPolicy.CanAutomaticallyRead(false,false,ReadingModes.Off),
+    "selection-only and off modes do not trigger cursor reading");
 Console.WriteLine("Finished all logic smoke tests. OCR and live GUI tests NOT executed by this test suite.");
