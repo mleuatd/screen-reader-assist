@@ -7,6 +7,31 @@ public static class UiAutomationReader
     [StructLayout(LayoutKind.Sequential)]
     public struct ScreenPoint { public int x, y; public ScreenPoint(Point p) {x=p.X;y=p.Y;} }
 
+    [DllImport("oleacc.dll", PreserveSig=true)]
+    private static extern int AccessibleObjectFromPoint(ScreenPoint point,
+        [MarshalAs(UnmanagedType.Interface)] out object accessible,
+        [MarshalAs(UnmanagedType.Struct)] out object childId);
+
+    /// <summary>Fallback for classic controls and browser text exposed through MSAA.</summary>
+    public static string ReadMsaaAtPoint(Point point)
+    {
+        object? accessible=null;
+        try {
+            if(AccessibleObjectFromPoint(new ScreenPoint(point),out var obj,out var child)!=0) return "";
+            accessible=obj;
+            dynamic item=obj;
+            string name="";
+            try { name=Convert.ToString(item.accName(child))?.Trim() ?? ""; }
+            catch { try { name=Convert.ToString(item.accName[child])?.Trim() ?? ""; } catch { } }
+            if(name.Length>500) name=name[..500];
+            return name;
+        } catch { return ""; }
+        finally {
+            if(accessible!=null && Marshal.IsComObject(accessible))
+                try { Marshal.ReleaseComObject(accessible); } catch { }
+        }
+    }
+
     /// <summary>Read accessible digital text under pointer, without clicking.</summary>
     public static string ReadAtPoint(Point point)
     {
