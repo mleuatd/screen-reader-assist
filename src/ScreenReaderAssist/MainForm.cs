@@ -254,7 +254,9 @@ public sealed class MainForm : Form
                     var estimate=BalloonDetector.Estimate(image,local);
                     using var bubble=image.Clone(estimate,image.PixelFormat);
                     value=await _ocr.RecognizeAsync(bubble,_settings.ocr.preferJapanese);
-                } else value=await _ocr.RecognizeNearPointAsync(image,
+                    if(string.IsNullOrWhiteSpace(value))
+                        value=await _ocr.RecognizeWithRegionFallbackAsync(image,local,_settings.ocr.preferJapanese,true);
+                } else value=await _ocr.RecognizeWithRegionFallbackAsync(image,
                     new Point(point.X-rect.X,point.Y-rect.Y),_settings.ocr.preferJapanese);
             }
             var current=Cursor.Position;
@@ -311,7 +313,14 @@ public sealed class MainForm : Form
             var rel=new Point(click.X-bounds.Left,click.Y-bounds.Top);
             var estimate=BalloonDetector.Estimate(whole,rel);
             _lastRect=new Rectangle(estimate.X+bounds.X,estimate.Y+bounds.Y,estimate.Width,estimate.Height);
-            await ReadBitmap(whole.Clone(estimate,whole.PixelFormat));
+            using var first=whole.Clone(estimate,whole.PixelFormat);
+            var text=await _ocr.RecognizeAsync(first,_settings.ocr.preferJapanese);
+            if(string.IsNullOrWhiteSpace(text))
+                text=await _ocr.RecognizeWithRegionFallbackAsync(whole,rel,_settings.ocr.preferJapanese,true);
+            if(string.IsNullOrWhiteSpace(text)) { Status("吹き出しの文字を認識できませんでした。");return; }
+            _lastText=text;_last.Text=text;
+            _speech.Speak(text,_settings.speech);
+            Status("漫画の吹き出しを読み上げ中。");
         } catch(Exception ex) { Status("漫画モードエラー: "+ex.Message);} finally {_busy=false;}
     }
     private async Task ReadBitmap(Bitmap image,Point? focus=null)
@@ -319,8 +328,8 @@ public sealed class MainForm : Form
         using(image) {
             Status("文字認識中…");
             string text=focus is Point p
-                ? await _ocr.RecognizeNearPointAsync(image,p,_settings.ocr.preferJapanese)
-                : await _ocr.RecognizeAsync(image,_settings.ocr.preferJapanese);
+                ? await _ocr.RecognizeWithRegionFallbackAsync(image,p,_settings.ocr.preferJapanese)
+                : await _ocr.RecognizeWithRegionFallbackAsync(image,new Point(image.Width/2,image.Height/2),_settings.ocr.preferJapanese,true);
             if(string.IsNullOrWhiteSpace(text)) {Status("文字を認識できませんでした。別の範囲を試してください。");return;}
             _lastText=text;_last.Text=text;
             if(_settings.ocr.copyToClipboard) Clipboard.SetText(text);
@@ -339,7 +348,7 @@ public sealed class MainForm : Form
                 var region=SelectionGeometry.AroundTap(local,
                     new Rectangle(Point.Empty,form.DesktopBounds.Size),440,180);
                 using var crop=form.CopyLocalRectangle(region);
-                var text=await _ocr.RecognizeNearPointAsync(crop,
+                var text=await _ocr.RecognizeWithRegionFallbackAsync(crop,
                     new Point(local.X-region.X,local.Y-region.Y),_settings.ocr.preferJapanese);
                 if(form.IsDisposed || !form.Visible || form.HoverVersion!=version) return;
                 if(string.IsNullOrWhiteSpace(text) || text==_lastHoverSpoken) return;

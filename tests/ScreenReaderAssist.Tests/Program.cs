@@ -38,4 +38,20 @@ Check(AppSettings.Normalize(new AppSettings{reading=new ReadingSettings{mode="st
 Check(AppSettings.Normalize(new AppSettings{reading=new ReadingSettings{mode=ReadingModes.Manga,dwellMilliseconds=5000}}).reading.dwellMilliseconds==2000,"hover dwell bounded");
 Check(ReadingModes.IsAuto(ReadingModes.Manga) && !ReadingModes.IsAuto(ReadingModes.Selection),"only cursor and manga are automatic");
 Check(AppSettings.Normalize(new AppSettings{reading=new ReadingSettings{mode=ReadingModes.Off}}).reading.mode==ReadingModes.Off,"off mode is persistent");
+using(var blank=new Bitmap(480,220)) {
+    using(var g=Graphics.FromImage(blank))g.Clear(Color.White);
+    Check(TextRegionDetector.Propose(blank,new Point(180,90)).Count==0,"no text regions invented from blank images");
+}
+using(var sample=new Bitmap(480,220)) {
+    using(var g=Graphics.FromImage(sample)) {
+        g.Clear(Color.White);
+        using var f=new Font("Arial",26,FontStyle.Bold);
+        g.DrawString("READ ME 123",f,Brushes.Black,new PointF(70,72));
+    }
+    var regions=TextRegionDetector.Propose(sample,new Point(160,90));
+    Check(regions.Count>0,"edge-based candidate found around rendered text");
+    Check(regions.Any(r=>r.Contains(new Point(145,94))),"proposed region overlaps text near cursor");
+    using var enhanced=TextRegionDetector.EnhanceForOcr(sample);
+    Check(enhanced.Width==960 && enhanced.Height==440,"candidate preprocessing enlarges legible pixels");
+}
 Console.WriteLine("Finished all logic smoke tests. OCR and live GUI tests NOT executed by this test suite.");

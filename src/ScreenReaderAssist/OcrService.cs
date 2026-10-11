@@ -8,6 +8,25 @@ namespace ScreenReaderAssist;
 
 public sealed class OcrService
 {
+    /// <summary>
+    /// If ordinary OCR misses a cursor target, search locally for text-like boundaries,
+    /// enlarge/contrast-correct a limited number of candidate areas and retry Windows OCR.
+    /// A region proposal is never treated as a valid transcription without OCR text.
+    /// </summary>
+    public async Task<string> RecognizeWithRegionFallbackAsync(Bitmap bmp,Point near,bool preferJapanese,bool manga=false)
+    {
+        string first=manga ? await RecognizeAsync(bmp,preferJapanese)
+                           : await RecognizeNearPointAsync(bmp,near,preferJapanese);
+        if(!string.IsNullOrWhiteSpace(first))return first;
+        foreach(var region in TextRegionDetector.Propose(bmp,near,2))
+        {
+            using var cropped=bmp.Clone(region,bmp.PixelFormat);
+            using var improved=TextRegionDetector.EnhanceForOcr(cropped);
+            var attempt=await RecognizeAsync(improved,preferJapanese);
+            if(attempt.Count(char.IsLetterOrDigit)>=2) return attempt;
+        }
+        return "";
+    }
     public async Task<string> RecognizeAsync(Bitmap bmp, bool preferJapanese)
     {
         var result=await RecognizeResultAsync(bmp,preferJapanese);
