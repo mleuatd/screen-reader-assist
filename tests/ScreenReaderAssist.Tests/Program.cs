@@ -1,4 +1,5 @@
 using ScreenReaderAssist;
+if(args.Contains("--benchmark-tts",StringComparer.OrdinalIgnoreCase)) {NativeTtsBenchmark.Run();return;}
 using System.Drawing;
 using System.Text.Json;
 
@@ -54,4 +55,5 @@ using(var sample=new Bitmap(480,220)) {
     using var enhanced=TextRegionDetector.EnhanceForOcr(sample);
     Check(enhanced.Width==960 && enhanced.Height==440,"candidate preprocessing enlarges legible pixels");
 }
+SpeechDispatchTests.Run();
 Console.WriteLine("Finished all logic smoke tests. OCR and live GUI tests NOT executed by this test suite.");
