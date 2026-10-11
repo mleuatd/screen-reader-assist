@@ -13,3 +13,5 @@
 - **MED-10 ブラウザE2Eテスト**: Playwright/Chromiumが実際のWebページへの`file://`と`http://127.0.0.1`遷移を管理者ポリシーにより拒否したため、ブラウザ実操作は未検証。GitHub Pages公開後に再テスト。
 
 - **BLOCKER-11 GitHub Pages初期有効化**: GitHub Actionsの`actions/configure-pages@v5`で404→自動作成は403 `Resource not accessible by integration`。リポジトリ所有者がSettings > Pages > Build and deployment > SourceをGitHub Actionsに設定する必要がある。
+
+- **RESOLVED-12 体験版をWebで開けない問題（代替経路）**: 専用GitHub Pagesとは別に、raw.githack.com がGitHubリポジトリからHTMLを配信する経路を確保。HTTP・リソース検証済み。初回の確認画面と第三者サービスへの依存は残る。

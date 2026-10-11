@@ -30,3 +30,7 @@ Windows向け自動テストは`tests/ScreenReaderAssist.Tests/`に存在する�
 - Python Playwright + Chromium headless（HTML/CSS/JSをインライン化して評価、ローカルHTTPへのネットワークアクセス制限のため）: desktop 1280px / mobile 390px で漫画タップ・モード切替・範囲ドラッグ・3クリック拡大・フォーム入力、JavaScript例外0。ページ配信環境の統合試験は未実施。
 - Web Speech API: `speechSynthesis.speak()`呼び出しと状態表示を検証。実音声の聴感品質は検証していない。
 - 画像OCR、実漫画の自動吹き出し抽出、PC全体の拡大: Webデモでは**未実装（模擬表示）**。
+
+### 2026-10-11 代替公開先HTTPスモークテスト
+- [x] GitHub Actions `38118586141`: raw.githack.com 経由で demo.html / demo.css / style.css / demo.js / demo-logic.mjs / index.html / app.js / settings.js のHTTP 200と非空・HTMLマーカー確認すべて成功。
+- [ ] 読み上げの実音声、実端末の3回タップ、外部プロキシのブラウザ確認画面からの実遷移は環境未検証。

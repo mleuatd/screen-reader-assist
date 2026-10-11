@@ -1,8 +1,11 @@
 # Screen Reader Assist — Windows 11 視覚障害支援アプリ（試作 v0.1）
 
+**[インストール不要でブラウザ体験（スマホ・PC）](https://raw.githack.com/mleuatd/screen-reader-assist/main/site/demo.html)** | [Web設定画面（GitHub経由）](https://raw.githack.com/mleuatd/screen-reader-assist/main/site/index.html)
+
+
 画面の任意範囲からWindowsの日本語OCRで文字を取り出し、インストール済みの音声合成エンジンで読み上げる、常駐型オープンソースアプリの**試作ソースコード**です。
 
-> **検証状況（2026-10-11）:** GitHub Actions のWindowsビルド・ロジックテストとWeb設定テストが成功。`win-x64` の配布アーティファクト生成を確認済み。Windows GUIでの操作、ゲーム・漫画OCR、3回クリック拡大などの実機検証は未実施。GitHub Releases に v0.1.0-preview.1 をプレリリース公開済み。GitHub Pagesは未有効化で公開待ち。試作版につき未検証機能に注意。
+> **検証状況（2026-10-11）:** GitHub Actions のWindowsビルド・ロジックテストとWeb設定テストが成功。`win-x64` の配布アーティファクト生成を確認済み。Windows GUIでの操作、ゲーム・漫画OCR、3回クリック拡大などの実機検証は未実施。GitHub Releases に v0.1.0-preview.1 をプレリリース公開済み。GitHub Pagesは初期有効化待ちですが、無料のGitHubファイル表示サービスで公開体験版を利用可能。試作版につき未検証機能に注意。
 
 ## 主な機能（実装済みコード／動作未検証）
 
@@ -83,3 +86,11 @@ dotnet publish src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release -r wi
 - この体験版は画像OCRを実行せず、サンプルに紐付く文章を取得する模擬動作です。Windows内の別アプリの画面は読み取れません。
 - 漫画の吹き出し検出を自動実行するものではありません。サンプル吹き出しはあらかじめ用意されています。
 - GitHub Pagesの初期有効化が必要な場合、Settings → Pages → Build and deployment → Source: GitHub Actions を選んでください。
+
+### Web体験版の公開形態
+
+- **公開済みの体験版**: [https://raw.githack.com/mleuatd/screen-reader-assist/main/site/demo.html](https://raw.githack.com/mleuatd/screen-reader-assist/main/site/demo.html)。アプリ本体は不要です。
+- HTML/CSS/JSをGitHubに配置し、raw.githack.comから配信する方式です。外部サービスの確認画面が最初に1回表示される場合があります。
+- GitHub Actions `38118586141` で必要な8ファイルのHTTP 200とコンテンツを確認済み。実機音声品質や他のブラウザでの全操作までは保証していません。
+- 漫画文字は予め設定した文章のサンプル、拡大は画面の一部のみです。実際のOCRはWindows用アプリが担当します。
+- 将来GitHub Pagesの初期有効化が可能になれば、同じソースから専用URLへ公開できます（初期設定のみ未完了）。

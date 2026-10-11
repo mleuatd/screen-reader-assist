@@ -1,3 +1,11 @@
+## 追加操作なしで閲覧できる代替プレビュー
+
+[ブラウザ体験版を開く](https://raw.githack.com/mleuatd/screen-reader-assist/main/site/demo.html)
+
+[設定Webページを開く](https://raw.githack.com/mleuatd/screen-reader-assist/main/site/index.html)
+
+この公開経路はGitHub Pagesの初期有効化を必要としません。外部プロキシの確認画面が出る場合は、公開先ドメイン・内容を確認してから進んでください。将来的な正式なGitHub Pagesサイトへの移行は未完了です。
+
 # 再開手順（2026-10-11更新）
 
 1. 公開リポジトリ `https://github.com/mleuatd/screen-reader-assist` とActions実行結果を確認。ソース35ファイルは反映済み。

@@ -30,3 +30,8 @@
 - [x] ブラウザ非依存のロジック7件と従来の設定4件の合計11件のNodeテストが通過。
 - [x] ローカルのheadless Chromiumでスマホ・PC表示と操作イベントを検証。JavaScript例外0件。音声出力の聴感品質は未確認。
 - [ ] GitHub Pages有効化・本番サイト配信の確認。
+
+### 2026-10-11 GitHub Pages以外の公開経路を確保
+- [x] raw.githack.com で本リポジトリのWeb体験版を公開。追加サーバー・費用・ユーザー側のGitHub Pages設定は不要。
+- [x] Actions `38118586141` で8リソースのHTTP 200と非空ファイル・HTMLマーカーを検証（ジョブ成功）。
+- [ ] 本家 GitHub Pages URL `mleuatd.github.io/screen-reader-assist/` は別途所有者による初期有効化が必要。
