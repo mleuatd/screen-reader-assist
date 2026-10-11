@@ -1,6 +1,6 @@
 # Screen Reader Assist — Windows 11 視覚障害支援アプリ（試作 v0.1）
 
-**[インストール不要でブラウザ体験（スマホ・PC）](https://mleuatd.github.io/dtx-drum-flow/screen-reader-assist/demo.html)** | [Web設定画面（GitHub経由）](https://mleuatd.github.io/dtx-drum-flow/screen-reader-assist/)
+**[インストール不要でブラウザ体験（スマホ・PC）](https://raw.githack.com/mleuatd/screen-reader-assist/main/site/demo.html)** | [Web設定画面（GitHub経由）](https://raw.githack.com/mleuatd/screen-reader-assist/main/site/index.html)
 
 
 画面の任意範囲からWindowsの日本語OCRで文字を取り出し、インストール済みの音声合成エンジンで読み上げる、常駐型オープンソースアプリの**試作ソースコード**です。
@@ -97,7 +97,13 @@ dotnet publish src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release -r wi
 
 ### 追加のGitHub Pages公開経路
 
-- ドラム用リポジトリ`mleuatd/dtx-drum-flow`の既設GitHub Pagesに独立の`site/screen-reader-assist/`ディレクトリをミラー。ブラウザ体験版のURL：https://mleuatd.github.io/dtx-drum-flow/screen-reader-assist/demo.html
-- 設定ページのURL：https://mleuatd.github.io/dtx-drum-flow/screen-reader-assist/
+- ドラム用リポジトリ`mleuatd/dtx-drum-flow`の既設GitHub Pagesに独立の`site/screen-reader-assist/`ディレクトリをミラー。ブラウザ体験版のURL：https://raw.githack.com/mleuatd/screen-reader-assist/main/site/demo.html
+- 設定ページのURL：https://raw.githack.com/mleuatd/screen-reader-assist/main/site/index.html
 - コードの正本は`mleuatd/screen-reader-assist/site/`。Pagesのミラーは更新時に同期が必要。ドラム本体コードへの変更はない。
 - 専用リポジトリのGitHub Pages初回有効化については別の設定が必要。ミラーはこの制約を回避する公開経路。
+
+## 公開サイトの独立管理について（2026-10-11）
+
+- ドラム用GitHub Pagesに一時追加した8ファイルは削除済み（ドラム側コミット`b6c7b56`）。サイトの正本は本リポジトリです。
+- [インストール不要の独立ブラウザ体験版](https://raw.githack.com/mleuatd/screen-reader-assist/main/site/demo.html) は無料のraw.githack.comを利用しています。
+- GitHub Pages専用URL `mleuatd.github.io/screen-reader-assist/` は**まだ公開されていません**。新しいリポジトリのPages初期有効化が必要ですが、現在のChatGPT GitHub連携にはその操作権限がありません。上記独立URLは動作確認済みの代替経路です。

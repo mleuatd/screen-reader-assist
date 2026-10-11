@@ -1,8 +1,10 @@
-# 再開位置：正式GitHub Pages公開経路（2026-10-11）
+# 現在の独立した公開先（2026-10-11）
 
-1. 本体ソースは`mleuatd/screen-reader-assist`。Webデモは`site/demo.html`。
-2. 既設ドラムPagesに読み上げ体験用の`site/screen-reader-assist/`を追加した。公開URL：https://mleuatd.github.io/dtx-drum-flow/screen-reader-assist/demo.html
-3. 公開は成功済み：`deploy-site` 実行 `38119463235` 成功、`Verify Screen Reader Assist Pages mirror` 実行 `38119529084` 成功。今後の改修後もこの2つで確認する。
-4. 新しい`screen-reader-assist`リポジトリ単体のPagesは初期有効化できていない。後に個別ドメイン`mleuatd.github.io/screen-reader-assist/`を使いたい場合、所有者権限でGitHub Pagesを有効にすること。
-5. 今後のWeb機能修正時には正本とドラムPagesミラー双方の8静的ファイルを同期する。ドラムの実行プログラムは変更しない。
-6. Windows試用版のCIビルドは成功、実際のGUIテスト未実施のため完成版としない。
+- 専用リポジトリ `https://github.com/mleuatd/screen-reader-assist`
+- インストール不要Web体験版 https://raw.githack.com/mleuatd/screen-reader-assist/main/site/demo.html
+- Web設定ページ `https://raw.githack.com/mleuatd/screen-reader-assist/main/site/index.html`
+- Windows版 `https://github.com/mleuatd/screen-reader-assist/releases/tag/v0.1.0-preview.1`
+- ドラム用サイトからは一時ミラーを削除済み。ドラム側とは分離して管理する。
+- 専用GitHub Pagesの初期有効化は未完了。現GitHub連携では設定権限がないため、完了扱いにしない。
+- 実機GUIテストは未実施、Windowsアプリはプレリリース扱いを維持。
+

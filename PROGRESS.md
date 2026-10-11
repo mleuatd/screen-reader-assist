@@ -42,3 +42,9 @@
 - [x] GitHub Pages上の独立URL：https://mleuatd.github.io/dtx-drum-flow/screen-reader-assist/demo.html
 - [ ] 新規の試用版更新時にPagesミラーを同期する仕組みは未実装。
 - [x] GitHub Pages公開が成功（ドラム側Actions `38119463235`）。独立した公開URL上のHTML・CSS・JavaScriptなど8ファイルをHTTP 200で確認（検証Actions `38119529084` 合格）。
+
+### 2026-10-11 ドラムサイトからの分離
+- [x] ドラムリポジトリ `mleuatd/dtx-drum-flow` から一時ミラー8ファイルと検証ワークフローを削除（`b6c7b56`）。
+- [x] 音声読み上げのコード正本と独立Web版を `mleuatd/screen-reader-assist` に維持。
+- [x] 独立Web体験版のraw.githack.com公開経路はActions `38118586141` で取得確認済み。
+- [ ] 個別GitHub Pagesの初期有効化は未対応（現在のGitHub連携権限では不可）。

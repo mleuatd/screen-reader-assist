@@ -45,3 +45,7 @@ Windows向け自動テストは`tests/ScreenReaderAssist.Tests/`に存在する�
 - 実公開URL `https://mleuatd.github.io/dtx-drum-flow/screen-reader-assist/demo.html`：HTTP取得成功。
 - 自動検証 `38119529084`：**成功**。index.html / demo.html / demo.js / demo.css / demo-logic.mjs / app.js / settings.js / style.css の8ファイルのHTTP 200、非空、重要な表示文字列の確認完了。
 - 実際の読み上げ音声、画面の操作性はこのHTTPテストの対象外。以前の11件のWebロジックテストは成功済み。
+
+### 2026-10-11 独立化の作業結果
+- GitHubドラム側コピー8ファイル、独立デモ検証ワークフローの削除コミット：`b6c7b56`。ソースコード本体は専用リポジトリに維持。
+- 専用raw.githack.comのHTTP取得テスト成功履歴：`38118586141`。GitHub標準の専用Pagesサイトは未公開。
