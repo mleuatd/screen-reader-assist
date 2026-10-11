@@ -1,7 +1,38 @@
+using System.Drawing;
+using System.Runtime.InteropServices;
 namespace ScreenReaderAssist;
 /// <summary>Read text exposed by the currently focused Windows UI Automation element.</summary>
 public static class UiAutomationReader
 {
+    [StructLayout(LayoutKind.Sequential)]
+    public struct ScreenPoint { public int x, y; public ScreenPoint(Point p) {x=p.X;y=p.Y;} }
+
+    /// <summary>Read accessible digital text under pointer, without clicking.</summary>
+    public static string ReadAtPoint(Point point)
+    {
+        try {
+            var type=Type.GetTypeFromCLSID(new Guid("FF48DBA4-60EF-4201-AA87-54103EEF594E"));
+            if(type is null) return "";
+            dynamic automation=Activator.CreateInstance(type)!;
+            dynamic element=automation.ElementFromPoint(new ScreenPoint(point));
+            if(element is null) return "";
+            // Only actual text-bearing controls; skip panes and window titles.
+            int kind=(int)element.CurrentControlType;
+            if(kind is not (50000 or 50002 or 50003 or 50004 or 50005 or 50007 or 50011 or 50013 or 50019 or 50020 or 50029 or 50034))
+                return "";
+            string name=((string?)element.CurrentName ?? "").Trim();
+            if(name.Length>0) return name.Length>500 ? name[..500] : name;
+            if(kind==50004) {
+                try {
+                    dynamic pattern=element.GetCurrentPattern(10014);
+                    string text=(string)pattern.DocumentRange.GetText(500);
+                    return text.Trim();
+                } catch { }
+            }
+        } catch { /* UIA may be unavailable or blocked on protected surfaces. */ }
+        return "";
+    }
+
     public static string ReadFocused()
     {
         // Native UI Automation COM, no external dependency or cloud account.
