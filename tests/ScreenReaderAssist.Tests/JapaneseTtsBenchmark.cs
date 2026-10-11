@@ -49,7 +49,7 @@ internal static class JapaneseTtsBenchmark
                             watch.Stop();
                             if(output.Length<1024)
                                 throw new InvalidOperationException("Japanese TTS output WAV is empty or too short.");
-                            if(synth.Voice.VoiceInfo.Culture.TwoLetterISOLanguageName!="ja")
+                            if(synth.Voice.Culture.TwoLetterISOLanguageName!="ja")
                                 throw new InvalidOperationException("SpeechSynthesizer switched away from Japanese voice.");
                             elapsed.Add(watch.Elapsed.TotalMilliseconds);
                             bytes=output.Length;
