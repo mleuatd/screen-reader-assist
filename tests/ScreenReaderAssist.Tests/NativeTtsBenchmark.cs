@@ -36,6 +36,31 @@ internal static class NativeTtsBenchmark
                 Console.WriteLine($"TTS BENCH native render run={i+1}, chars={text.Length}, generate_ms={watch.Elapsed.TotalMilliseconds:F1}, output_bytes={output.Length}, chars_per_second={text.Length/Math.Max(.001,watch.Elapsed.TotalSeconds):F1}");
                 if(output.Length<44)throw new InvalidOperationException("SAPI produced an unexpectedly short WAV");
             }
+            // Compare forced enumeration/reselection with cached voice settings using
+            // the same synthesizer and same text; exclude audio playback time.
+            Measure("reselect every time",true);
+            Measure("reuse selected voice",false);
+            void Measure(string label,bool redundantVoiceSetup)
+            {
+                double total=0;
+                const int trials=5;
+                for(int i=0;i<trials;i++)
+                {
+                    using var wave=new MemoryStream();
+                    if(redundantVoiceSetup)
+                    {
+                        _=synth.GetInstalledVoices().Count;
+                        synth.SelectVoice(selected.VoiceInfo.Name);
+                    }
+                    synth.SetOutputToWaveStream(wave);
+                    var sw=Stopwatch.StartNew();
+                    synth.Speak(brief);
+                    sw.Stop();
+                    if(wave.Length<44)throw new InvalidOperationException("SAPI WAV output is empty");
+                    total+=sw.Elapsed.TotalMilliseconds;
+                }
+                Console.WriteLine($"TTS BENCH repeat mode={label}, trials={trials}, mean_render_ms={total/trials:F2}, lang={selected.VoiceInfo.Culture.Name}");
+            }
             Console.WriteLine("TTS BENCH complete. Measurements are offline waveform synthesis time, NOT audio playback delay.");
         }
         catch(Exception ex)

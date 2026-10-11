@@ -43,6 +43,8 @@ public sealed class SpeechService : IDisposable
         _voiceNames=voices.Select(v=>v.Name).ToArray();
         _initialVoice=engine.CurrentVoice;
         _selectedVoice=_initialVoice;
+        _appliedRate=engine.Rate;
+        _appliedVolume=engine.Volume;
         _defaultVoice=voices.FirstOrDefault(v=>v.IsJapanese)?.Name ?? _initialVoice;
     }
 

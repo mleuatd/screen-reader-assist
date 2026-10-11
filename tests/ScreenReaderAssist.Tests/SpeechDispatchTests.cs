@@ -76,6 +76,7 @@ internal static class SpeechDispatchTests
         for(int i=0;i<requests;i++)service.Speak("Recognized text for fast speech dispatch",settings);
         timer.Stop();
         Assert(e.SpeakCalls==requests,"TTS synthetic 10000-request dispatch count");
+        Assert(e.RateWrites==0 && e.VolumeWrites==0,"TTS default settings need no native property writes");
         Console.WriteLine($"BENCH Dispatch only (fake engine; NOT audio generation): {requests} requests / {timer.Elapsed.TotalMilliseconds:F2} ms; 1 voice scan; {e.VoiceSelects} voice selections; {e.RateWrites} rate writes; {e.VolumeWrites} volume writes");
     }
 
