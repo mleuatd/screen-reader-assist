@@ -107,3 +107,9 @@ Windows向け自動テストは`tests/ScreenReaderAssist.Tests/`に存在する�
 - 同じ音声と86文字をそれぞれ5回ずつ試験した比較：`GetInstalledVoices + SelectVoice` を毎回呼ぶ条件は平均17.91ms、同一音声選択を使い回す条件は平均20.26ms。**この測定で音声生成計算が短縮したとは主張できない**。キャッシュによって重複設定呼び出しは削減された。
 - 1万件の送信の再計測10.65msは偽エンジンのみ。文字が出るまでの待機時間・GUI初期化・音声が耳に聞こえるまでの遅延とは異なる。
 - **日本語SAPI声での生成速度およびエンドユーザーWindows 11での音声再生開始時間は未計測**。
+
+### 2026-10-11 日本語音声2系統の試験（重要）
+- 専用Actions `38130885005`：WindowsランナーでSAPI日本語音声0。利用可能音声は Microsoft David Desktop（en-US）とMicrosoft Zira Desktop（en-US）。`Language.TextToSpeech~~~ja-JP~0.0.1.0`はNotPresentで、追加は5分タイムアウト、最後の状態もNotPresent。**日本語SAPIでの音声合成速度は未測定**。
+- 専用Actions `38131159339`：WinRT OneCore英語3種類（David, Zira, Mark）、日本語音声0。**OneCore日本語での音声合成速度は未測定**。
+- 上記workflowのジョブ成功表示は「英語しかないことを調べられた」ことを意味する。内部の日本語測定ステップは利用不可のため不合格/未測定であり、日本語性能の合格ではない。
+- v0.5.1では設定画面に日本語SAPI音声をローカル測定する診断ボタンを追加。Windowsビルド/テストは別途記録する。
