@@ -46,6 +46,7 @@ public sealed class SpeechService : IDisposable
         _appliedRate=engine.Rate;
         _appliedVolume=engine.Volume;
         _defaultVoice=voices.FirstOrDefault(v=>v.IsJapanese)?.Name ?? _initialVoice;
+        DiagnosticLog.Info("音声初期化",$"音声エンジン準備完了。音声数={voices.Count}、日本語音声数={voices.Count(v=>v.IsJapanese)}。");
     }
 
     public string[] VoiceNames => (string[])_voiceNames.Clone();
@@ -54,6 +55,7 @@ public sealed class SpeechService : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed,this);
         if(string.IsNullOrWhiteSpace(text))return;
+        DiagnosticLog.Info("音声要求",$"読み上げ要求を受信。文字数={text.Length}。");
 
         // Stop an old utterance before changing voice or speaking the next one.
         // CancelAll also clears queued playback, so the latest requested text wins.
@@ -66,7 +68,9 @@ public sealed class SpeechService : IDisposable
             try {
                 _engine.SelectVoice(wanted);
                 _selectedVoice=wanted;
-            } catch(ArgumentException) {
+                DiagnosticLog.Info("音声選択","音声の選択を更新しました。");
+            } catch(ArgumentException ex) {
+                DiagnosticLog.Error("音声選択",ex);
                 // Voices can be uninstalled while the tray process remains open.
                 // Avoid retrying a stale voice on every utterance.
                 _selectedVoice=_engine.CurrentVoice;
@@ -77,6 +81,7 @@ public sealed class SpeechService : IDisposable
         if(_appliedRate!=rate) { _engine.Rate=rate;_appliedRate=rate; }
         if(_appliedVolume!=volume) { _engine.Volume=volume;_appliedVolume=volume; }
         _engine.SpeakAsync(text);
+        DiagnosticLog.Info("音声要求",$"音声エンジンへの非同期送信成功。速度={rate}、音量={volume}。");
     }
 
     private string ResolveVoice(string? configured)
@@ -91,13 +96,14 @@ public sealed class SpeechService : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed,this);
         _engine.CancelAll();
+        DiagnosticLog.Info("音声停止","音声停止を要求しました。");
     }
 
     public void TogglePause()
     {
         ObjectDisposedException.ThrowIf(_disposed,this);
-        if(_engine.IsPaused)_engine.Resume();
-        else _engine.Pause();
+        if(_engine.IsPaused){_engine.Resume();DiagnosticLog.Info("音声操作","一時停止から再開しました。");}
+        else {_engine.Pause();DiagnosticLog.Info("音声操作","一時停止を要求しました。");}
     }
 
     public void Dispose()
@@ -116,6 +122,11 @@ public sealed class WindowsSpeechEngine : ISpeechEngine
     public WindowsSpeechEngine()
     {
         _synth.SetOutputToDefaultAudioDevice();
+        _synth.SpeakStarted+=(_,_)=>DiagnosticLog.Info("音声再生","SAPIが読み上げを開始しました。");
+        _synth.SpeakCompleted+=(_,e)=>{
+            if(e.Error!=null)DiagnosticLog.Error("音声再生失敗",e.Error);
+            else DiagnosticLog.Info("音声再生",e.Cancelled?"読み上げが取消されました。":"読み上げが完了しました。");
+        };
         _voices=_synth.GetInstalledVoices()
             .Where(v=>v.Enabled)
             .Select(v=>new SpeechVoice(v.VoiceInfo.Name,
