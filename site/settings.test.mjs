@@ -16,3 +16,23 @@ test('no user input injection in schema',()=>{
 test('legacy triple click setting is disabled to prevent interference',()=>{
   assert.equal(normalizeSettings({version:1,magnifier:{enableTripleClick:true}}).magnifier.enableTripleClick,false);
 });
+
+test('default reading mode and OCR fallback are configured',()=>{
+  assert.equal(defaults.reading.mode,'cursor');
+  assert.equal(defaults.reading.ocrFallback,true);
+});
+test('mode settings can be customized',()=>{
+  const s=normalizeSettings({version:1,reading:{mode:'manga',dwellMilliseconds:1200,ocrFallback:false}});
+  assert.equal(s.reading.mode,'manga');
+  assert.equal(s.reading.dwellMilliseconds,1200);
+  assert.equal(s.reading.ocrFallback,false);
+});
+test('legacy settings still load with cursor defaults',()=>{
+  const s=normalizeSettings({version:1});
+  assert.deepEqual(s.reading,defaults.reading);
+});
+test('invalid modes and dwell delays are normalized',()=>{
+  const s=normalizeSettings({version:1,reading:{mode:'invalid',dwellMilliseconds:99999}});
+  assert.equal(s.reading.mode,'cursor');
+  assert.equal(s.reading.dwellMilliseconds,2000);
+});

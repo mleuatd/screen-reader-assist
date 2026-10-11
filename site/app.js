@@ -6,6 +6,9 @@ function syncModel(){
   model.speech.volume=Number(byId('volume').value);
   model.speech.voiceName=byId('voiceName').value;
   model.magnifier.zoom=Number(byId('zoom').value);
+  model.reading.mode=byId('reading-mode').value;
+  model.reading.dwellMilliseconds=Number(byId('reading-dwell').value);
+  model.reading.ocrFallback=byId('reading-ocr').checked;
   model.magnifier.enableTripleClick=false;
   model.ocr.copyToClipboard=byId('copy').checked;
   model.ocr.preferJapanese=byId('japanese').checked;
@@ -18,6 +21,9 @@ function syncForm(){
   byId('volume').value=model.speech.volume;
   byId('voiceName').value=model.speech.voiceName;
   byId('zoom').value=String(model.magnifier.zoom);
+  byId('reading-mode').value=model.reading.mode;
+  byId('reading-dwell').value=String(model.reading.dwellMilliseconds);
+  byId('reading-ocr').checked=model.reading.ocrFallback;
   byId('triple').checked=model.magnifier.enableTripleClick;
   byId('copy').checked=model.ocr.copyToClipboard;
   byId('japanese').checked=model.ocr.preferJapanese;

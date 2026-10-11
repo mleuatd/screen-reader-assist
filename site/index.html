@@ -11,10 +11,13 @@
   <a class="skip" href="#content">メインコンテンツへ移動</a>
   <header><div class="container"><span class="logo">Screen Reader Assist</span><nav aria-label="主要メニュー"><a href="#download">ダウンロード</a><a href="demo.html">無料で体験</a><a href="#settings">設定作成</a><a href="#help">使い方</a></nav></div></header>
   <main id="content" class="container">
-    <section class="hero" aria-labelledby="heroTitle"><p class="eyebrow">Windows 11 / 個人利用無料 / 日本語優先</p><h1 id="heroTitle">読みたい場所を選んで、<br>音声で聞く。</h1><p>画面の文字をOCRで認識して読み上げます。漫画の吹き出しをクリックする試験モードや、一時拡大も搭載する開発中のアクセシビリティアプリです。</p><a class="button primary" id="download" href="https://github.com/mleuatd/screen-reader-assist/releases/download/v0.3.0-preview.1/ScreenReaderAssist-win-x64.zip">Windows用試用版をダウンロード</a><p class="fine">v0.3.0-preview.1 の試用版を公開中です。Windows上での画面操作・音声・拡大は未検証のため、正式版ではありません。アプリは署名されていないため警告が出る場合があります。</p></section>
+    <section class="hero" aria-labelledby="heroTitle"><p class="eyebrow">Windows 11 / 個人利用無料 / 日本語優先</p><h1 id="heroTitle">カーソルを合わせて、<br>文字を聞く。</h1><p>標準モードではWindowsの文字情報を読み取り、取得できない文字も設定により画像OCRを試せます。漫画の吹き出しをクリックする試験モードや、一時拡大も搭載する開発中のアクセシビリティアプリです。</p><a class="button primary" id="download" href="https://github.com/mleuatd/screen-reader-assist/releases/download/v0.3.0-preview.1/ScreenReaderAssist-win-x64.zip">Windows用試用版をダウンロード</a><p class="fine">v0.3.0-preview.1 の試用版を公開中です。Windows上での画面操作・音声・拡大は未検証のため、正式版ではありません。アプリは署名されていないため警告が出る場合があります。</p></section>
     <section class="card" aria-labelledby="tryTitle" id="try-demo"><h2 id="tryTitle">まずはブラウザで無料体験</h2><p>アプリをインストールせず、スマホやパソコンで、範囲読み上げ・漫画の吹き出し読み上げ・3回タップ拡大を試せます。声の高さや読み上げ速度も設定できます。</p><a class="button primary" href="demo.html">インストールせずに体験する</a><p class="fine">サンプル画面の模擬OCRです。音声は端末のブラウザ機能を使用し、Windows全体の画面読み取りは行いません。</p></section>
     <section aria-labelledby="settingsHeading" id="settings" class="card"><h2 id="settingsHeading">設定ファイルを作る</h2><p>ここで設定を変更し、JSONファイルをダウンロードしてWindowsアプリの「設定を取り込む」から読み込んでください。入力内容は外部サーバーへ送信しません。</p>
       <div class="formgrid">
+        <div><label for="reading-mode">読み上げモード</label><select id="reading-mode"><option value="cursor">カーソルで自動読み上げ（標準）</option><option value="manga">漫画の吹き出しOCR（カーソル）</option><option value="selection">範囲選択のみ</option><option value="off">自動読み上げ停止</option></select></div>
+        <div><label for="reading-dwell">カーソル静止の待ち時間（ミリ秒）</label><input id="reading-dwell" type="number" min="400" max="2000" step="100" value="750"></div>
+        <div class="check"><input type="checkbox" id="reading-ocr" checked><label for="reading-ocr">デジタル文字が取得できない場合、画像OCRで補う（カーソルモード）</label></div>
         <div><label for="rate">読み上げ速度（-10〜10）</label><input type="range" id="rate" min="-10" max="10" step="1" value="0" aria-describedby="rateVal"><output for="rate" id="rateVal">0</output></div>
         <div><label for="volume">音量（0〜100）</label><input type="range" id="volume" min="0" max="100" value="100" step="5"><output for="volume" id="volumeVal">100</output></div>
         <div><label for="voiceName">インストール済み音声名（任意）</label><input type="text" id="voiceName" placeholder="空欄なら日本語音声を自動選択" maxlength="100"></div>
@@ -27,7 +30,7 @@
       <p id="message" role="status" aria-live="polite"></p>
       <details><summary>設定JSONのプレビュー</summary><pre id="preview"></pre></details>
     </section>
-    <section id="help" class="card" aria-labelledby="helpTitle"><h2 id="helpTitle">基本操作</h2><dl><dt>Ctrl + Alt + R</dt><dd>画面上の専用選択モードを開き、タッチ・ドラッグまたはキーボードで範囲を決めて読み上げ。1回タップで周辺を読む</dd><dt>Alt + Shift + M</dt><dd>漫画の吹き出しをクリックしてOCR（簡易検出・試験版）</dd><dt>Alt + Shift + U</dt><dd>現在フォーカス中のUI Automation文字を読む</dd><dt>Alt + Shift + S / P</dt><dd>停止 / 一時停止・再開</dd><dt>Alt + Shift + Z</dt><dd>画面拡大の開始・終了（試験的）</dd></dl><p>画像や保護されたゲームの文字は読み取れない場合があります。無料のWindows音声合成で日本語音声がない場合は、Windowsの言語・音声設定を確認してください。</p></section>
+    <section id="help" class="card" aria-labelledby="helpTitle"><h2 id="helpTitle">基本操作</h2><dl><dt>標準（自動カーソル）</dt><dd>アプリ常駐中、約0.75秒カーソルを止めると文字を読み上げます。まずWindowsの文字情報、必要ならOCRで補います。クリック操作には介入しません</dd><dt>漫画モード</dt><dd>カーソル付近の吹き出しと思われる部分をOCRして読み上げます（試験版。自動的なコマ順推定には未対応）</dd><dt>Ctrl + Alt + R</dt><dd>画面上の専用選択モードを開き、タッチ・ドラッグまたはキーボードで範囲を決めて読み上げ。1回タップで周辺を読む</dd><dt>Alt + Shift + M</dt><dd>漫画の吹き出しをクリックしてOCR（簡易検出・試験版）</dd><dt>Alt + Shift + U</dt><dd>現在フォーカス中のUI Automation文字を読む</dd><dt>Alt + Shift + S / P</dt><dd>停止 / 一時停止・再開</dd><dt>Alt + Shift + Z</dt><dd>画面拡大の開始・終了（試験的）</dd></dl><p>読み上げモードはWindowsアプリの設定からも切り替えられます。設定ファイルで読み上げモードや待ち時間も編集できます。画像OCRや漫画の解析は実機での精度検証が必要です。</p><p>画像や保護されたゲームの文字は読み取れない場合があります。無料のWindows音声合成で日本語音声がない場合は、Windowsの言語・音声設定を確認してください。</p></section>
     <footer><p>オフライン処理・プライバシー優先。公開ソースの初期試作です。声優本人の音声を学習・複製する機能はありません。</p></footer>
   </main><script type="module" src="app.js"></script>
 </body>
