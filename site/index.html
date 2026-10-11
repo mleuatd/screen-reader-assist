@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111827">
+  <title>Screen Reader Assist — 無料のWindows 11画面読み上げ支援</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip" href="#content">メインコンテンツへ移動</a>
+  <header><div class="container"><span class="logo">Screen Reader Assist</span><nav aria-label="主要メニュー"><a href="#download">ダウンロード</a><a href="#settings">設定作成</a><a href="#help">使い方</a></nav></div></header>
+  <main id="content" class="container">
+    <section class="hero" aria-labelledby="heroTitle"><p class="eyebrow">Windows 11 / 個人利用無料 / 日本語優先</p><h1 id="heroTitle">読みたい場所を選んで、<br>音声で聞く。</h1><p>画面の文字をOCRで認識して読み上げます。漫画の吹き出しをクリックする試験モードや、一時拡大も搭載する開発中のアクセシビリティアプリです。</p><a class="button primary" id="download" href="https://github.com/mleuatd/screen-reader-assist/releases">公開版を確認する</a><p class="fine">現時点では正式版未公開です。公開後にWindows用ファイルの取得先を案内します。アプリは署名されていないため警告が出る場合があります。</p></section>
+    <section aria-labelledby="settingsHeading" id="settings" class="card"><h2 id="settingsHeading">設定ファイルを作る</h2><p>ここで設定を変更し、JSONファイルをダウンロードしてWindowsアプリの「設定を取り込む」から読み込んでください。入力内容は外部サーバーへ送信しません。</p>
+      <div class="formgrid">
+        <div><label for="rate">読み上げ速度（-10〜10）</label><input type="range" id="rate" min="-10" max="10" step="1" value="0" aria-describedby="rateVal"><output for="rate" id="rateVal">0</output></div>
+        <div><label for="volume">音量（0〜100）</label><input type="range" id="volume" min="0" max="100" value="100" step="5"><output for="volume" id="volumeVal">100</output></div>
+        <div><label for="voiceName">インストール済み音声名（任意）</label><input type="text" id="voiceName" placeholder="空欄なら日本語音声を自動選択" maxlength="100"></div>
+        <div><label for="zoom">画面拡大倍率</label><select id="zoom"><option value="1.5">1.5倍</option><option value="2" selected>2倍</option><option value="3">3倍</option><option value="4">4倍</option><option value="5">5倍</option><option value="6">6倍</option></select></div>
+        <div class="check"><input type="checkbox" id="triple"><label for="triple">3回クリックによる一時拡大を有効化（試験的。通常クリックと競合する場合あり）</label></div>
+        <div class="check"><input type="checkbox" id="copy"><label for="copy">認識文字を自動コピー</label></div>
+        <div class="check"><input type="checkbox" id="japanese" checked><label for="japanese">日本語OCRを優先</label></div>
+      </div>
+      <div class="actions"><button id="save" class="button primary" type="button">設定JSONをダウンロード</button><button id="copyJson" class="button secondary" type="button">設定JSONをコピー</button><label for="import">既存の設定を読み込む</label><input type="file" id="import" accept="application/json,.json"></div>
+      <p id="message" role="status" aria-live="polite"></p>
+      <details><summary>設定JSONのプレビュー</summary><pre id="preview"></pre></details>
+    </section>
+    <section id="help" class="card" aria-labelledby="helpTitle"><h2 id="helpTitle">基本操作</h2><dl><dt>Alt + Shift + R</dt><dd>範囲を選択して文字を認識・読み上げ</dd><dt>Alt + Shift + M</dt><dd>漫画の吹き出しをクリックしてOCR（簡易検出・試験版）</dd><dt>Alt + Shift + U</dt><dd>現在フォーカス中のUI Automation文字を読む</dd><dt>Alt + Shift + S / P</dt><dd>停止 / 一時停止・再開</dd><dt>Alt + Shift + Z</dt><dd>画面拡大の開始・終了（試験的）</dd></dl><p>画像や保護されたゲームの文字は読み取れない場合があります。無料のWindows音声合成で日本語音声がない場合は、Windowsの言語・音声設定を確認してください。</p></section>
+    <footer><p>オフライン処理・プライバシー優先。公開ソースの初期試作です。声優本人の音声を学習・複製する機能はありません。</p></footer>
+  </main><script type="module" src="app.js"></script>
+</body>
+</html>
