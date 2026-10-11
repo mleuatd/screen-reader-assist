@@ -65,3 +65,9 @@ Windows向け自動テストは`tests/ScreenReaderAssist.Tests/`に存在する�
 - Windowsのビルド・単体テストが成功した場合でも、実際のYouTubeタイトルの長文・折り返しへのOCR品質は実機未検証。
 - Windows 11実機で、元のアプリにマウス/タッチイベントが到達しないことは未検証。
 - 座標ロジックテストにカーソル近傍の矩形と画面端の切り取り2件を追加。
+
+### 2026-10-11 v0.3正式なCI検証結果
+- [x] Windows Actions `38127109047` **成功**。ログから16件のPASSを確認（キャプチャ・実音声は除く）。
+- [x] Webテスト `38127109071` **成功**。
+- [x] Windows実験版ZIP `v0.3.0-preview.1` のGitHub Releases公開成功。Actions `38127109058`、74,556,618バイト。
+- [ ] Windowsのタッチ実機、YouTubeリンク、OCRテキスト選択、SAPI音声品質は未検証。
