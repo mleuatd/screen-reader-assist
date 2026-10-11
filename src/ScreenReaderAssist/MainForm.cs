@@ -162,6 +162,9 @@ public sealed class MainForm : Form
         int row=0;
         AddFull("通知領域で常駐します。設定画面の×を押しても自動読み上げは続きます。再表示：通知領域アイコンを左クリック、または右クリック→「設定を開く」。",row++);
         AddFull("Ctrl+Alt+R：範囲読み上げ（タッチ／ドラッグ）。Alt+Shift+M：漫画、U：UI、S：停止、P：一時停止、Z：拡大",row++);
+        panel.Controls.Add(_health,0,row);
+        panel.SetColumnSpan(_health,2);
+        row++;
         Add("読み上げモード",_readingMode,row++);
         Add("静止時間（ms）",_hoverDelay,row++);
         Add("画像文字への対応",_ocrFallback,row++);
@@ -195,12 +198,7 @@ public sealed class MainForm : Form
         var tabs=new TabControl { Dock=DockStyle.Fill,AccessibleName="認識文字と動作状況" };
         var diagnosticPage=new TabPage("動作状況（リアルタイム）");
         var lastTextPage=new TabPage("最後に認識した文字");
-        var diagnosticLayout=new TableLayoutPanel { Dock=DockStyle.Fill,RowCount=2,ColumnCount=1 };
-        diagnosticLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        diagnosticLayout.RowStyles.Add(new RowStyle(SizeType.Percent,100));
-        diagnosticLayout.Controls.Add(_health,0,0);
-        diagnosticLayout.Controls.Add(_diagnosticEvents,0,1);
-        diagnosticPage.Controls.Add(diagnosticLayout);
+        diagnosticPage.Controls.Add(_diagnosticEvents);
         lastTextPage.Controls.Add(_last);
         tabs.TabPages.Add(diagnosticPage);
         tabs.TabPages.Add(lastTextPage);
@@ -352,16 +350,22 @@ public sealed class MainForm : Form
     {
         if(_hoverBusy)return;
         _hoverBusy=true;
+        var watch=System.Diagnostics.Stopwatch.StartNew();
+        DiagnosticLog.Info("カーソル読み取り",$"カーソル静止を検出しました。モード={ReadingModes.Label(mode)}。");
         try {
             string value="";
             if(mode==ReadingModes.Cursor) {
                 value=UiAutomationReader.ReadAtPoint(point);
+                DiagnosticLog.Info("文字情報",string.IsNullOrWhiteSpace(value)?"UI Automationから文字情報を取得できませんでした。":$"UI Automationから文字情報を取得。文字数={value.Length}。");
                 // Legacy accessibility is still exposed by many Windows/browser controls.
-                if(string.IsNullOrWhiteSpace(value))
+                if(string.IsNullOrWhiteSpace(value)) {
                     value=UiAutomationReader.ReadMsaaAtPoint(point);
+                    DiagnosticLog.Info("文字情報",string.IsNullOrWhiteSpace(value)?"MSAAからも文字情報を取得できませんでした。":$"MSAAから文字情報を取得。文字数={value.Length}。");
+                }
             }
             if(string.IsNullOrWhiteSpace(value) &&
                 (mode==ReadingModes.Manga || _settings.reading.ocrFallback)) {
+                DiagnosticLog.Info("カーソルOCR","デジタル文字が得られず、画像OCRを開始します。");
                 var desktop=ScreenCapture.VirtualBounds;
                 var rect=SelectionGeometry.AroundTap(point,desktop,
                     mode==ReadingModes.Manga?650:520,mode==ReadingModes.Manga?490:220);
@@ -379,15 +383,23 @@ public sealed class MainForm : Form
             var current=Cursor.Position;
             if(IsDisposed || _busy || generation!=_cursorGeneration ||
                 Math.Abs(current.X-point.X)>10 || Math.Abs(current.Y-point.Y)>10 ||
-                mode!=_settings.reading.mode || !ReadingModes.IsAuto(mode) || Visible) return;
+                mode!=_settings.reading.mode || !ReadingModes.IsAuto(mode) || Visible) {
+                DiagnosticLog.Info("カーソル読み取り","カーソルが移動したため古い認識結果を破棄しました。");
+                return;
+            }
             value=value.Trim();
-            if(value.Length==0 || value==_lastAutoText) return;
+            if(value.Length==0) {
+                DiagnosticLog.Warn("カーソル読み取り",$"文字を検出できませんでした。所要時間={watch.ElapsedMilliseconds}ms。");
+                return;
+            }
+            if(value==_lastAutoText)return;
             _lastAutoText=value;
             _lastText=value;
             _last.Text=value;
+            DiagnosticLog.Info("カーソル読み取り",$"文字を取得しました。文字数={value.Length}、所要時間={watch.ElapsedMilliseconds}ms。");
             _speech.Speak(value,_settings.speech);
-            Status("カーソルの文字を読み上げ: "+value);
-        } catch(Exception ex) { if(!IsDisposed) Status("カーソル読み取りエラー: "+ex.Message); }
+            Status($"カーソル位置から{value.Length}文字の音声読み上げを依頼しました。");
+        } catch(Exception ex) {DiagnosticLog.Error("カーソル読み取り",ex);if(!IsDisposed) Status("カーソル読み取りエラー: "+ex.Message); }
         finally { _hoverBusy=false; }
     }
     private void ToggleZoom()
@@ -400,30 +412,37 @@ public sealed class MainForm : Form
         if(_busy)return;
         _busy=true;
         _cursorGeneration++;
+        DiagnosticLog.Info("範囲読み取り","Ctrl+Alt+Rまたはメニューで範囲読み取りを開始しました。");
         try {
             HideSettings();
             // Let Windows restore the previous application before capturing it.
             await Task.Delay(80);
             using var sel=new SelectionForm();
+            DiagnosticLog.Info("範囲読み取り","選択オーバーレイを表示します。クリック・ドラッグ・Enterで決定、Escで取消。");
             _lastHoverSpoken="";
             sel.HoverRequested+=(point,version)=>_ = ReadHoverAsync(sel,point,version);
-            if(sel.ShowDialog()!=DialogResult.OK || sel.ChosenScreenBounds is null) return;
+            if(sel.ShowDialog()!=DialogResult.OK || sel.ChosenScreenBounds is null) {
+                DiagnosticLog.Info("範囲読み取り","選択をキャンセルしました。");
+                return;
+            }
+            DiagnosticLog.Info("範囲読み取り",$"範囲選択完了。幅={sel.ChosenScreenBounds.Value.Width}px、高さ={sel.ChosenScreenBounds.Value.Height}px。");
             _lastRect=sel.ChosenScreenBounds;
             // Click reads the nearest OCR line; drag reads all lines in the selection.
             Point? focus=sel.ChosenTapScreenPoint is Point tap
                 ? new Point(tap.X-_lastRect.Value.X,tap.Y-_lastRect.Value.Y) : null;
             await ReadBitmap(sel.CopyChosenBitmap(),focus);
-        } catch(Exception ex) {Status("読み取りエラー: "+ex.Message);} finally {_busy=false;}
+        } catch(Exception ex) {DiagnosticLog.Error("範囲読み取り",ex);Status("読み取りエラー: "+ex.Message);} finally {_busy=false;DiagnosticLog.Info("範囲読み取り","処理を終了しました。");}
     }
     private async Task ReadBalloon()
     {
-        if(_busy)return;
+        if(_busy){DiagnosticLog.Info("漫画OCR","他の読み取り中のため開始しません。");return;}
         _busy=true;
+        DiagnosticLog.Info("漫画OCR","漫画モードを開始しました。");
         try {
             HideSettings();
             await Task.Delay(80);
             using var sel=new SelectionForm(balloonMode:true);
-            if(sel.ShowDialog()!=DialogResult.OK || sel.ClickScreenPoint is null)return;
+            if(sel.ShowDialog()!=DialogResult.OK || sel.ClickScreenPoint is null){DiagnosticLog.Info("漫画OCR","選択をキャンセルしました。");return;}
             var bounds=sel.DesktopBounds;
             using var whole=sel.CopyScreenshot();
             var click=sel.ClickScreenPoint.Value;
@@ -439,20 +458,30 @@ public sealed class MainForm : Form
                 text=await _ocr.RecognizeWithRegionFallbackAsync(crop,
                     new Point(rel.X-nearby.X,rel.Y-nearby.Y),_settings.ocr.preferJapanese,true);
             }
-            if(string.IsNullOrWhiteSpace(text)) { Status("吹き出しの文字を認識できませんでした。");return; }
+            if(string.IsNullOrWhiteSpace(text)) {
+                DiagnosticLog.Warn("漫画OCR","吹き出しの文字を認識できませんでした。");
+                Status("吹き出しの文字を認識できませんでした。");return;
+            }
+            DiagnosticLog.Info("漫画OCR",$"吹き出しを認識しました。文字数={text.Length}。");
             _lastText=text;_last.Text=text;
             _speech.Speak(text,_settings.speech);
             Status("漫画の吹き出しを読み上げ中。");
-        } catch(Exception ex) { Status("漫画モードエラー: "+ex.Message);} finally {_busy=false;}
+        } catch(Exception ex) {DiagnosticLog.Error("漫画OCR",ex);Status("漫画モードエラー: "+ex.Message);} finally {_busy=false;}
     }
     private async Task ReadBitmap(Bitmap image,Point? focus=null)
     {
         using(image) {
+            DiagnosticLog.Info("文字認識",$"OCR開始。画像サイズ={image.Width}x{image.Height}。");
+            var watch=System.Diagnostics.Stopwatch.StartNew();
             Status("文字認識中…");
             string text=focus is Point p
                 ? await _ocr.RecognizeWithRegionFallbackAsync(image,p,_settings.ocr.preferJapanese)
                 : await _ocr.RecognizeWithRegionFallbackAsync(image,new Point(image.Width/2,image.Height/2),_settings.ocr.preferJapanese,true);
-            if(string.IsNullOrWhiteSpace(text)) {Status("文字を認識できませんでした。別の範囲を試してください。");return;}
+            if(string.IsNullOrWhiteSpace(text)) {
+                DiagnosticLog.Warn("文字認識",$"文字が見つかりませんでした。所要時間={watch.ElapsedMilliseconds}ms。");
+                Status("文字を認識できませんでした。別の範囲を試してください。");return;
+            }
+            DiagnosticLog.Info("文字認識",$"文字認識成功。文字数={text.Length}、所要時間={watch.ElapsedMilliseconds}ms。");
             _lastText=text;_last.Text=text;
             if(_settings.ocr.copyToClipboard) Clipboard.SetText(text);
             _speech.Speak(text,_settings.speech);
@@ -461,6 +490,7 @@ public sealed class MainForm : Form
     }
     private async Task ReadHoverAsync(SelectionForm form, Point screenPoint,int version)
     {
+        DiagnosticLog.Info("範囲ホバー","選択画面でカーソル静止を検出。画像OCRを開始します。");
         // OCR can run longer than the dwell interval; serialize requests and ignore stale positions.
         try {
             await _hoverGate.WaitAsync();
@@ -473,14 +503,16 @@ public sealed class MainForm : Form
                 var text=await _ocr.RecognizeWithRegionFallbackAsync(crop,
                     new Point(local.X-region.X,local.Y-region.Y),_settings.ocr.preferJapanese);
                 if(form.IsDisposed || !form.Visible || form.HoverVersion!=version) return;
-                if(string.IsNullOrWhiteSpace(text) || text==_lastHoverSpoken) return;
+                if(string.IsNullOrWhiteSpace(text)){DiagnosticLog.Warn("範囲ホバー","文字を認識できませんでした。");return;}
+                if(text==_lastHoverSpoken)return;
+                DiagnosticLog.Info("範囲ホバー",$"文字を認識しました。文字数={text.Length}。");
                 _lastHoverSpoken=text;
                 _lastText=text; _last.Text=text;
                 // Hover does not alter the clipboard, even if auto-copy is enabled.
                 _speech.Speak(text,_settings.speech);
                 Status("カーソル位置を読み上げ中: "+text);
             } finally { _hoverGate.Release(); }
-        } catch(Exception ex) { if(!form.IsDisposed && form.Visible) Status("カーソル読み取りエラー: "+ex.Message); }
+        } catch(Exception ex) {DiagnosticLog.Error("範囲ホバー",ex);if(!form.IsDisposed && form.Visible) Status("カーソル読み取りエラー: "+ex.Message); }
     }
     private async Task DiagnoseJapaneseVoice()
     {
@@ -534,11 +566,13 @@ public sealed class MainForm : Form
     private void Status(string text) { if(IsDisposed)return; if(InvokeRequired) {BeginInvoke(new Action(()=>Status(text)));return;} _status.Text=text; }
     private void HideSettings()
     {
+        if(Visible)DiagnosticLog.Info("設定画面","設定画面を隠しました。自動読み上げを再開できます。");
         Hide();
         _settingsMayBeShown=false;
     }
     private void OpenSettings()
     {
+        DiagnosticLog.Info("設定画面","設定画面を開き、リアルタイム診断を表示します。");
         _settingsMayBeShown=true;
         if(WindowState==FormWindowState.Minimized) WindowState=FormWindowState.Normal;
         Show();
@@ -546,10 +580,10 @@ public sealed class MainForm : Form
         BringToFront();
         Activate();
     }
-    private void Quit() {_quitting=true;Close();}
+    private void Quit() {DiagnosticLog.Info("終了","通知領域などから終了しました。");_quitting=true;Close();}
     protected override void Dispose(bool disposing)
     {
-        if(disposing){_cursorTimer.Stop();_cursorTimer.Dispose();_hoverGate.Dispose();_magnifier.Dispose();_speech.Dispose();_tray.Visible=false;_tray.Dispose();}
+        if(disposing){DiagnosticLog.EntryAdded-=OnLogEntryAdded;_healthTimer.Stop();_healthTimer.Dispose();_cursorTimer.Stop();_cursorTimer.Dispose();_hoverGate.Dispose();_magnifier.Dispose();_speech.Dispose();_tray.Visible=false;_tray.Dispose();}
         base.Dispose(disposing);
     }
 }
