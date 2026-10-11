@@ -1,0 +1,61 @@
+name: Import prototype bundle and validate
+on:
+  push:
+    paths:
+      - '.bundle/chunk07.txt'
+permissions:
+  contents: write
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Extract project and commit files
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .bundle/chunk*.txt | base64 --decode | tar --extract --xz --file=-
+          rm -rf .bundle
+          rm -f .github/workflows/import-prototype.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m "Import full Screen Reader Assist prototype source"
+          git push origin HEAD:main
+  windows-build:
+    needs: import
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Build and logic tests
+        shell: pwsh
+        run: |
+          dotnet build src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --project tests/ScreenReaderAssist.Tests/ScreenReaderAssist.Tests.csproj -c Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet publish src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Compress-Archive -Path publish\* -DestinationPath ScreenReaderAssist-win-x64.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ScreenReaderAssist-win-x64
+          path: ScreenReaderAssist-win-x64.zip
+  web-test:
+    needs: import
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test site/settings.test.mjs
