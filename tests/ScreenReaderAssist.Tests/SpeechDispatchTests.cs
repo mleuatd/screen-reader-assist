@@ -47,7 +47,7 @@ internal static class SpeechDispatchTests
         Assert(e.VoiceSelects==1,"TTS voice change takes effect once");
         speech.Speak("四",new SpeechSettings{voiceName="non-existent",rate=5,volume=91});
         Assert(e.CurrentVoice=="Japanese" && e.VoiceSelects==1,"TTS removed voices fall back to Japanese without reselection");
-        Assert(e.RateWrites==2 && e.VolumeWrites==2,"TTS changed rate and volume are reapplied");
+        Assert(e.RateWrites==2 && e.VolumeWrites==1,"TTS only changed rate and volume are reapplied");
     }
 
     private static void CheckPauseStopAndEmpty()
