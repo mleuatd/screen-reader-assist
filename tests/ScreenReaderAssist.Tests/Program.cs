@@ -118,4 +118,15 @@ Check(!TrayReadingPolicy.CanAutomaticallyRead(false,true,ReadingModes.Cursor),
 Check(!TrayReadingPolicy.CanAutomaticallyRead(false,false,ReadingModes.Selection) &&
       !TrayReadingPolicy.CanAutomaticallyRead(false,false,ReadingModes.Off),
     "selection-only and off modes do not trigger cursor reading");
+int diagnosticEvents=0;
+void OnDiagnosticEntry(string _) => diagnosticEvents++;
+DiagnosticLog.EntryAdded+=OnDiagnosticEntry;
+DiagnosticLog.Info("テスト","記録の動作を確認しました。個人情報やOCRの文章は出力しません。");
+DiagnosticLog.EntryAdded-=OnDiagnosticEntry;
+Check(Path.GetFileName(DiagnosticLog.FilePath)=="ScreenReaderAssist.log",
+    "diagnostic log is beside executable");
+Check(File.Exists(DiagnosticLog.FilePath),"diagnostic log file is created locally");
+Check(diagnosticEvents==1 && DiagnosticLog.Snapshot().Contains("[テスト]"),
+    "diagnostics stream updates live status listeners");
+Check(!string.IsNullOrEmpty(DiagnosticLog.Snapshot()),"diagnostic snapshot is available");
 Console.WriteLine("Finished all logic smoke tests. OCR and live GUI tests NOT executed by this test suite.");

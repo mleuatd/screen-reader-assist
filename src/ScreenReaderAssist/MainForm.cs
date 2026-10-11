@@ -80,6 +80,10 @@ public sealed class MainForm : Form
         menu.Items.Add("注目中のUI要素を読む",null,(_,_)=>ReadFocused());
         menu.Items.Add("日本語音声の性能を検証",null,async (_,_)=>await DiagnoseJapaneseVoice());
         menu.Items.Add("動作ログを表示",null,(_,_)=>OpenDiagnosticLog());
+        menu.Items.Add("音声テスト",null,(_,_)=>{
+            try {DiagnosticLog.Info("音声テスト","通知領域から直接音声を試験します。");_speech.Speak("これは読み上げ音声のテストです。",_settings.speech);}
+            catch(Exception ex){DiagnosticLog.Error("音声テスト",ex);}
+        });
         menu.Items.Add("読み上げ停止",null,(_,_)=>_speech.Stop());
         menu.Items.Add("終了",null,(_,_)=>Quit());
         _tray.ContextMenuStrip=menu;
@@ -180,6 +184,13 @@ public sealed class MainForm : Form
         AddButton(buttons,"範囲読み上げ",()=>_=ReadSelection());
         AddButton(buttons,"漫画モード",()=>_=ReadBalloon());
         AddButton(buttons,"再読み上げ",()=>_speech.Speak(_lastText,_settings.speech));
+        AddButton(buttons,"音声テスト",()=>{
+            try {
+                DiagnosticLog.Info("音声テスト","設定画面から直接音声再生を試験します。");
+                _speech.Speak("これは読み上げ音声のテストです。",_settings.speech);
+                Status("音声テストを実行しました。音が聞こえない場合は動作ログを確認してください。");
+            } catch(Exception ex){DiagnosticLog.Error("音声テスト",ex);Status("音声テストに失敗しました。動作ログをご確認ください。");}
+        });
         AddButton(buttons,"日本語音声を診断",()=>_=DiagnoseJapaneseVoice());
         AddButton(buttons,"停止",()=>_speech.Stop());
         panel.Controls.Add(buttons,0,row); panel.SetColumnSpan(buttons,2);row++;
@@ -275,7 +286,8 @@ public sealed class MainForm : Form
             _busy?"範囲選択・漫画読み取りの処理中":
             _hoverBusy?"カーソル位置の文字認識中":
             ReadingModes.IsAuto(_settings.reading.mode)?"カーソル自動読み上げの監視中":"自動読み上げ停止中";
-        _health.Text=$"状態: {state} / モード: {ReadingModes.Label(_settings.reading.mode)} / Ctrl+Alt+R: {(_hotkeyRRegistered?"登録済み":"登録できていません")}";
+        _health.Text=$"状態: {state} / モード: {ReadingModes.Label(_settings.reading.mode)} / Ctrl+Alt+R: {(_hotkeyRRegistered?"登録済み":"登録できていません")}" +
+            (DiagnosticLog.LastWriteError is string error?" / ログ書込失敗: "+error:"");
         if(++_heartbeatCounter%30==0)
             DiagnosticLog.Info("稼働確認",$"アプリ稼働中。状態={state}、範囲選択中={_busy}、OCR処理中={_hoverBusy}、Ctrl+Alt+R登録済み={_hotkeyRRegistered}。");
     }

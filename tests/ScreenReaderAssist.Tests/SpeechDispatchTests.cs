@@ -73,7 +73,10 @@ internal static class SpeechDispatchTests
         var settings=new SpeechSettings{rate=0,volume=100};
         const int requests=10000;
         var timer=Stopwatch.StartNew();
-        for(int i=0;i<requests;i++)service.Speak("Recognized text for fast speech dispatch",settings);
+        // The benchmark measures only dispatch cost; exclude file-system diagnostic work.
+        DiagnosticLog.Enabled=false;
+        try {for(int i=0;i<requests;i++)service.Speak("Recognized text for fast speech dispatch",settings);}
+        finally {DiagnosticLog.Enabled=true;}
         timer.Stop();
         Assert(e.SpeakCalls==requests,"TTS synthetic 10000-request dispatch count");
         Assert(e.RateWrites==0 && e.VolumeWrites==0,"TTS default settings need no native property writes");

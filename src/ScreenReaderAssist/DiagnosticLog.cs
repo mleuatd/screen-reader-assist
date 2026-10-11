@@ -13,6 +13,7 @@ public static class DiagnosticLog
     private static readonly Queue<string> Recent=new();
     private static string? _lastWriteError;
 
+    public static bool Enabled {get;set;}=true;
     public static string FilePath=>Path.Combine(AppContext.BaseDirectory,"ScreenReaderAssist.log");
     public static string BackupPath=>Path.Combine(AppContext.BaseDirectory,"ScreenReaderAssist.previous.log");
     public static string? LastWriteError { get { lock(Gate) return _lastWriteError; } }
@@ -25,6 +26,7 @@ public static class DiagnosticLog
 
     private static void Append(string level,string category,string message)
     {
+        if(!Enabled)return;
         // Caller must not pass OCR content, copied text, full URLs, or screenshots.
         var safe=message.Replace("\r"," ").Replace("\n"," | ");
         var line=$"{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss.fff zzz} [{level}] [{category}] {safe}";
