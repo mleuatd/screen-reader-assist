@@ -58,5 +58,9 @@ using(var sample=new Bitmap(480,220)) {
     using var enhanced=TextRegionDetector.EnhanceForOcr(sample);
     Check(enhanced.Width==960 && enhanced.Height==440,"candidate preprocessing enlarges legible pixels");
 }
+Check(JapaneseSpeechDiagnostic.Samples.Length==3,"Japanese local diagnostic has short medium and long samples");
+var japaneseDiagnostic=JapaneseSpeechDiagnostic.Run();
+Check(File.Exists(japaneseDiagnostic.SavedTo),"Japanese voice diagnostic writes a local report");
+Check(japaneseDiagnostic.Report.Contains("日本語SAPI音声:"),"Japanese voice diagnostic reports voice availability explicitly");
 SpeechDispatchTests.Run();
 Console.WriteLine("Finished all logic smoke tests. OCR and live GUI tests NOT executed by this test suite.");
