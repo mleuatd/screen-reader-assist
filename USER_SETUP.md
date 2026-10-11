@@ -1,6 +1,6 @@
 # Windows 11での試用手順（実験版）
 
-1. [試用版ZIP](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.4.0-preview.1/ScreenReaderAssist-win-x64.zip)を取得し、任意のフォルダーに展開します。
+1. [試用版ZIP](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.4.0-preview.2/ScreenReaderAssist-win-x64.zip)を取得し、任意のフォルダーに展開します。
 2. 展開した`ScreenReaderAssist.exe`を起動します。署名されていないためWindows SmartScreen警告が表示される場合があります。信頼できない場合は起動しないでください。
 3. 起動すると通知領域に常駐します。設定を開くには通知領域のアイコンをダブルクリックします。
 4. `Ctrl+Alt+R`で範囲選択、`Alt+Shift+M`で吹き出しクリック、`Alt+Shift+U`でフォーカス中のUI文字取得、`Alt+Shift+S`で停止、`Alt+Shift+P`で一時停止・再開、`Alt+Shift+Z`で一時拡大です。

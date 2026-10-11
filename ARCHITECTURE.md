@@ -30,3 +30,5 @@ Windows Magnification APIは拡大後のポインター入力と別個の座標�
 - 漫画モードは近傍のスクリーンショットからBalloonDetectorによる白い領域抽出→OCR。コマ割り順の解析は未対応。
 - 設定画面表示中、範囲選択中、カーソル移動中の古いOCRの結果は読み上げない。
 - 元のアプリへ偽クリックせず、マウスフックも使用しない。COM UIAの動作はアプリや権限に依存し、実機検証を要する。
+
+- UI Automationから値が得られない場合は、oleacc.dllのAccessibleObjectFromPointでMSAAの要素名取得を試します。COMアクセスが失敗した場合はOCRへ進みます。

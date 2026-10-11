@@ -5,7 +5,7 @@
 
 画面の任意範囲からWindowsの日本語OCRで文字を取り出し、インストール済みの音声合成エンジンで読み上げる、常駐型オープンソースアプリの**試作ソースコード**です。
 
-> **検証状況（2026-10-11）:** GitHub Actions のWindowsビルド・ロジックテストとWeb設定テストが成功。`win-x64` の配布アーティファクト生成を確認済み。v0.3のWindowsビルドと16件のロジックテストにも成功。Windows GUIでの操作、ゲーム・漫画OCR・タッチ入力などの実機検証は未実施。GitHub Releases の最新プレビューは v0.4.0-preview.1（ビルドと配布の結果を確認してください）。GitHub Pagesは初期有効化待ちですが、無料のGitHubファイル表示サービスで公開体験版を利用可能。試作版につき未検証機能に注意。
+> **検証状況（2026-10-11）:** GitHub Actions のWindowsビルド・ロジックテストとWeb設定テストが成功。`win-x64` の配布アーティファクト生成を確認済み。v0.3のWindowsビルドと16件のロジックテストにも成功。Windows GUIでの操作、ゲーム・漫画OCR・タッチ入力などの実機検証は未実施。GitHub Releases の最新プレビューは v0.4.0-preview.2（ビルドと配布の結果を確認してください）。GitHub Pagesは初期有効化待ちですが、無料のGitHubファイル表示サービスで公開体験版を利用可能。試作版につき未検証機能に注意。
 
 ## 主な機能（実装済みコード／動作未検証）
 
@@ -76,7 +76,7 @@ dotnet publish src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release -r wi
 
 ## 試験版を入手する
 
-- [Windows 11 x64向け試験版 ZIP (v0.4.0-preview.1)](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.4.0-preview.1/ScreenReaderAssist-win-x64.zip)
+- [Windows 11 x64向け試験版 ZIP (v0.4.0-preview.2)](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.4.0-preview.2/ScreenReaderAssist-win-x64.zip)
 - **注意**: 実機GUI検証は未実施。初回起動時のSmartScreen警告の可能性あり。Windows標準のOCR言語と読み上げ音声が必要です。
 
 ## ブラウザ体験版（アプリのインストール不要）
@@ -114,7 +114,7 @@ dotnet publish src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release -r wi
 - ドラッグして離すと囲んだ座標をOCR。短いタップの場合は周辺（最大360×160ピクセル）をOCR。Escで中止。
 - 選択中は通常アプリにクリック操作が伝わらないことを意図した構造ですが、UACセキュアデスクトップ、排他的フルスクリーン、他のTopMostウィンドウ等の特例があります。実機での入力非干渉テストは未完了。
 - 以前の設定ファイルの`magnifier.enableTripleClick:true`は読み込み時に無効化。グローバル3連クリックフックは使用しません。
-- 対応バージョンは次のプレビューリリース以降です。旧`v0.4.0-preview.1`はホットキーが違います。
+- 対応バージョンは次のプレビューリリース以降です。旧`v0.4.0-preview.2`はホットキーが違います。
 
 ## v0.3 カーソルを止めて読み上げ（試作）
 
@@ -135,3 +135,6 @@ dotnet publish src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release -r wi
 - 静止待ち時間400～2000ms、OCR補完の有効・無効、音声速度などを編集し設定ファイルへ保存できます。
 - 自動カーソルは100msタイマーで位置だけを監視。読み上げ中にカーソルが移動すれば古いOCR結果は捨て、同じ文章の重複朗読を抑制します。
 - **制限**：画像になった文字にもOCRは試せますが、低画質や縦書きでは認識精度が下がります。Windows実機でのUIA取得・カーソル位置・音声・漫画の精度はまだ未検証です。
+
+### デジタル文字を取得する方式
+Windows UI Automationを優先し、取得できない場合はWindows標準のMicrosoft Active Accessibility（MSAA）も試します。両方で取得できない場合だけ、OCR補完がONなら画像を認識します。アプリのクリックを自動実行することはありません。
