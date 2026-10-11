@@ -119,13 +119,14 @@ public sealed class MainForm : Form
     }
     private void BuildForm()
     {
-        var panel=new TableLayoutPanel { Dock=DockStyle.Fill,Padding=new Padding(18),AutoScroll=true,ColumnCount=2,RowCount=16 };
+        var panel=new TableLayoutPanel { Dock=DockStyle.Fill,Padding=new Padding(18),AutoScroll=true,ColumnCount=2,RowCount=17 };
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,185));
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
-        for(int i=0;i<15;i++) panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        for(int i=0;i<16;i++) panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         panel.RowStyles.Add(new RowStyle(SizeType.Percent,100));
         Controls.Add(panel);
         int row=0;
+        AddFull("通知領域で常駐します。設定画面の×を押しても自動読み上げは続きます。再表示：通知領域アイコンを左クリック、または右クリック→「設定を開く」。",row++);
         AddFull("Ctrl+Alt+R：範囲読み上げ（タッチ／ドラッグ）。Alt+Shift+M：漫画、U：UI、S：停止、P：一時停止、Z：拡大",row++);
         Add("読み上げモード",_readingMode,row++);
         Add("静止時間（ms）",_hoverDelay,row++);
