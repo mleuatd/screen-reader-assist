@@ -10,6 +10,26 @@ public sealed class OcrService
 {
     public async Task<string> RecognizeAsync(Bitmap bmp, bool preferJapanese)
     {
+        var result=await RecognizeResultAsync(bmp,preferJapanese);
+        return result.Text?.Trim() ?? "";
+    }
+    /// <summary>Read the OCR line nearest the cursor, not every nearby link or timestamp.</summary>
+    public async Task<string> RecognizeNearPointAsync(Bitmap bmp, Point near, bool preferJapanese)
+    {
+        var result=await RecognizeResultAsync(bmp,preferJapanese);
+        var closest=result.Lines.Select(line => {
+            var boxes=line.Words.Select(w=>w.BoundingRect).ToArray();
+            if (boxes.Length==0) return (text:"",distance:double.PositiveInfinity);
+            double left=boxes.Min(b=>b.X), top=boxes.Min(b=>b.Y);
+            double right=boxes.Max(b=>b.X+b.Width),bottom=boxes.Max(b=>b.Y+b.Height);
+            var dx=Math.Max(left-near.X,Math.Max(0,near.X-right));
+            var dy=Math.Max(top-near.Y,Math.Max(0,near.Y-bottom));
+            return (text:line.Text?.Trim()??"",distance:dx*dx+dy*dy);
+        }).OrderBy(x=>x.distance).FirstOrDefault();
+        return closest.distance<=80*80 ? closest.text : "";
+    }
+    private static async Task<OcrResult> RecognizeResultAsync(Bitmap bmp, bool preferJapanese)
+    {
         OcrEngine? engine = null;
         if (preferJapanese && OcrEngine.IsLanguageSupported(new Language("ja-JP")))
             engine = OcrEngine.TryCreateFromLanguage(new Language("ja-JP"));
@@ -37,6 +57,6 @@ public sealed class OcrService
         var decoder=await BitmapDecoder.CreateAsync(stream);
         using var bitmap=await decoder.GetSoftwareBitmapAsync(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
         var result=await engine.RecognizeAsync(bitmap);
-        return result.Text?.Trim() ?? "";
+        return result;
     }
 }

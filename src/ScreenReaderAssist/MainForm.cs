@@ -20,6 +20,8 @@ public sealed class MainForm : Form
     private readonly TextBox _last = new() { Multiline=true, ReadOnly=true, ScrollBars=ScrollBars.Vertical, Height=110, Dock=DockStyle.Fill, AccessibleName="最後に認識した文章" };
     private Rectangle? _lastRect;
     private bool _busy,_quitting;
+    private readonly SemaphoreSlim _hoverGate = new(1,1);
+    private string _lastHoverSpoken="";
     private string _lastText="";
 
     public MainForm()
@@ -162,10 +164,14 @@ public sealed class MainForm : Form
             // Let Windows restore the previous application before capturing it.
             await Task.Delay(80);
             using var sel=new SelectionForm();
+            _lastHoverSpoken="";
+            sel.HoverRequested+=(point,version)=>_ = ReadHoverAsync(sel,point,version);
             if(sel.ShowDialog()!=DialogResult.OK || sel.ChosenScreenBounds is null) return;
             _lastRect=sel.ChosenScreenBounds;
-            // Use the exact pre-overlay screenshot that the user selected from.
-            await ReadBitmap(sel.CopyChosenBitmap());
+            // Click reads the nearest OCR line; drag reads all lines in the selection.
+            Point? focus=sel.ChosenTapScreenPoint is Point tap
+                ? new Point(tap.X-_lastRect.Value.X,tap.Y-_lastRect.Value.Y) : null;
+            await ReadBitmap(sel.CopyChosenBitmap(),focus);
         } catch(Exception ex) {Status("読み取りエラー: "+ex.Message);} finally {_busy=false;}
     }
     private async Task ReadBalloon()
@@ -186,17 +192,42 @@ public sealed class MainForm : Form
             await ReadBitmap(whole.Clone(estimate,whole.PixelFormat));
         } catch(Exception ex) { Status("漫画モードエラー: "+ex.Message);} finally {_busy=false;}
     }
-    private async Task ReadBitmap(Bitmap image)
+    private async Task ReadBitmap(Bitmap image,Point? focus=null)
     {
         using(image) {
             Status("文字認識中…");
-            string text=await _ocr.RecognizeAsync(image,_settings.ocr.preferJapanese);
+            string text=focus is Point p
+                ? await _ocr.RecognizeNearPointAsync(image,p,_settings.ocr.preferJapanese)
+                : await _ocr.RecognizeAsync(image,_settings.ocr.preferJapanese);
             if(string.IsNullOrWhiteSpace(text)) {Status("文字を認識できませんでした。別の範囲を試してください。");return;}
             _lastText=text;_last.Text=text;
             if(_settings.ocr.copyToClipboard) Clipboard.SetText(text);
             _speech.Speak(text,_settings.speech);
             Status($"読み上げ中（{text.Length}文字）。音声が出ない場合はWindowsの音声を確認してください。");
         }
+    }
+    private async Task ReadHoverAsync(SelectionForm form, Point screenPoint,int version)
+    {
+        // OCR can run longer than the dwell interval; serialize requests and ignore stale positions.
+        try {
+            await _hoverGate.WaitAsync();
+            try {
+                if(form.IsDisposed || !form.Visible || form.HoverVersion!=version) return;
+                var local=new Point(screenPoint.X-form.DesktopBounds.X,screenPoint.Y-form.DesktopBounds.Y);
+                var region=SelectionGeometry.AroundTap(local,
+                    new Rectangle(Point.Empty,form.DesktopBounds.Size),440,180);
+                using var crop=form.CopyLocalRectangle(region);
+                var text=await _ocr.RecognizeNearPointAsync(crop,
+                    new Point(local.X-region.X,local.Y-region.Y),_settings.ocr.preferJapanese);
+                if(form.IsDisposed || !form.Visible || form.HoverVersion!=version) return;
+                if(string.IsNullOrWhiteSpace(text) || text==_lastHoverSpoken) return;
+                _lastHoverSpoken=text;
+                _lastText=text; _last.Text=text;
+                // Hover does not alter the clipboard, even if auto-copy is enabled.
+                _speech.Speak(text,_settings.speech);
+                Status("カーソル位置を読み上げ中: "+text);
+            } finally { _hoverGate.Release(); }
+        } catch(Exception ex) { if(!form.IsDisposed && form.Visible) Status("カーソル読み取りエラー: "+ex.Message); }
     }
     private void ReadFocused()
     {
@@ -232,7 +263,7 @@ public sealed class MainForm : Form
     private void Quit() {_quitting=true;Close();}
     protected override void Dispose(bool disposing)
     {
-        if(disposing){_magnifier.Dispose();_speech.Dispose();_tray.Visible=false;_tray.Dispose();}
+        if(disposing){_hoverGate.Dispose();_magnifier.Dispose();_speech.Dispose();_tray.Visible=false;_tray.Dispose();}
         base.Dispose(disposing);
     }
 }

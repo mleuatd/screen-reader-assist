@@ -10,6 +10,13 @@ public sealed class SelectionForm : Form
     private bool _dragging;
     private readonly bool _balloonMode;
     private readonly Rectangle _desktop;
+    private readonly System.Windows.Forms.Timer _hoverTimer = new() { Interval = 850 };
+    private Point _hoverLocal;
+    private Point _lastMouseLocal = new(-1000,-1000);
+    public int HoverVersion { get; private set; }
+    public bool HoverEnabled { get; private set; } = true;
+    public event Action<Point,int>? HoverRequested;
+    public Point? ChosenTapScreenPoint { get; private set; }
     public Rectangle? ChosenScreenBounds { get; private set; }
     public Point? ClickScreenPoint { get; private set; }
     public Rectangle DesktopBounds => _desktop;
@@ -19,6 +26,11 @@ public sealed class SelectionForm : Form
         _balloonMode = balloonMode;
         _desktop = ScreenCapture.VirtualBounds;
         _screenshot = ScreenCapture.Capture(_desktop);
+        _hoverTimer.Tick += (_,_) => {
+            _hoverTimer.Stop();
+            if (!_balloonMode && !_dragging && HoverEnabled && Visible)
+                HoverRequested?.Invoke(PointToScreen(_hoverLocal),HoverVersion);
+        };
         FormBorderStyle = FormBorderStyle.None;
         StartPosition = FormStartPosition.Manual;
         Bounds = _desktop;
@@ -29,7 +41,7 @@ public sealed class SelectionForm : Form
         DoubleBuffered = true;
         BackColor = Color.Black;
         Opacity = 1;
-        AccessibleName = balloonMode ? "漫画の吹き出しをクリック" : "読み取る範囲をドラッグ。矢印キーで移動、Shift+矢印でサイズ調整、Enterで確定、Escapeで取消";
+        AccessibleName = balloonMode ? "漫画の吹き出しをクリック" : "読み取りモード。カーソルを約1秒止めるとその文字を読み上げ。タップで文字を読み、ドラッグで範囲選択。Hで自動読み上げの切替。Escapeで取消";
     }
     protected override void OnShown(EventArgs e)
     {
@@ -50,19 +62,29 @@ public sealed class SelectionForm : Form
         }
         using var bg = new SolidBrush(Color.FromArgb(215, Color.Black));
         e.Graphics.FillRectangle(bg, 5, 5, Math.Min(Width-10, 820), 38);
-        TextRenderer.DrawText(e.Graphics, _balloonMode ? "漫画: 吹き出しの内部をクリック / Esc: 中止" : "ドラッグ: 選択 / 矢印: 移動 / Shift+矢印: 拡大縮小 / Enter: 決定 / Esc: 中止", Font, new Point(15,12), Color.White);
+        TextRenderer.DrawText(e.Graphics, _balloonMode ? "漫画: 吹き出しの内部をクリック / Esc: 中止" : $"カーソル静止: 自動読み上げ {(HoverEnabled ? "ON" : "OFF")} / H: 切替 / タップ: 読む / ドラッグ: 範囲 / Esc: 終了", Font, new Point(15,12), Color.White);
     }
     protected override void OnMouseDown(MouseEventArgs e)
     {
         base.OnMouseDown(e);
         if (e.Button != MouseButtons.Left) return;
+        _hoverTimer.Stop(); HoverVersion++;
         if (_balloonMode) { ClickScreenPoint = PointToScreen(e.Location); DialogResult = DialogResult.OK; Close(); return; }
         _start = e.Location; _selection = Rectangle.Empty; _dragging = true; Capture = true; Invalidate();
     }
     protected override void OnMouseMove(MouseEventArgs e)
     {
         base.OnMouseMove(e);
-        if (!_dragging) return;
+        if (!_dragging) {
+            if (_balloonMode || !HoverEnabled || !ClientRectangle.Contains(e.Location)) return;
+            if (Math.Abs(e.X-_lastMouseLocal.X)<9 && Math.Abs(e.Y-_lastMouseLocal.Y)<9) return;
+            _lastMouseLocal=e.Location;
+            _hoverLocal=e.Location;
+            HoverVersion++;
+            _hoverTimer.Stop();
+            _hoverTimer.Start();
+            return;
+        }
         _selection = SelectionGeometry.FromDrag(_start,e.Location,ClientRectangle);
         Invalidate();
     }
@@ -73,13 +95,18 @@ public sealed class SelectionForm : Form
         _dragging = false; Capture = false;
         _selection = SelectionGeometry.FromDrag(_start,e.Location,ClientRectangle);
         // A single touch / click selects a useful region around that point.
-        if (_selection.Width < 8 || _selection.Height < 8)
-            _selection = SelectionGeometry.AroundTap(e.Location,ClientRectangle);
+        if (_selection.Width < 8 || _selection.Height < 8) {
+            ChosenTapScreenPoint = PointToScreen(e.Location);
+            _selection = SelectionGeometry.AroundTap(e.Location,ClientRectangle,440,180);
+        }
         Accept();
     }
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {
-        if (keyData == Keys.Escape) { DialogResult = DialogResult.Cancel; Close(); return true; }
+        if (keyData == Keys.Escape) { _hoverTimer.Stop(); HoverVersion++; DialogResult = DialogResult.Cancel; Close(); return true; }
+        if (keyData == Keys.H && !_balloonMode) {
+            HoverEnabled=!HoverEnabled; HoverVersion++; _hoverTimer.Stop(); Invalidate(); return true;
+        }
         if (keyData == Keys.Enter && !_balloonMode) { Accept(); return true; }
         if (_balloonMode) return base.ProcessCmdKey(ref msg, keyData);
         int dx = 0, dy = 0;
@@ -104,6 +131,12 @@ public sealed class SelectionForm : Form
         DialogResult = DialogResult.OK; Close();
     }
     public Bitmap CopyScreenshot() => (Bitmap)_screenshot.Clone();
+    public Bitmap CopyLocalRectangle(Rectangle local)
+    {
+        var clipped=Rectangle.Intersect(local,new Rectangle(Point.Empty,_screenshot.Size));
+        if (clipped.Width<1 || clipped.Height<1) throw new ArgumentOutOfRangeException(nameof(local));
+        return _screenshot.Clone(clipped,_screenshot.PixelFormat);
+    }
     public Bitmap CopyChosenBitmap()
     {
         if (ChosenScreenBounds is not Rectangle chosen) throw new InvalidOperationException("範囲が選択されていません。");
@@ -112,7 +145,7 @@ public sealed class SelectionForm : Form
     }
     protected override void Dispose(bool disposing)
     {
-        if (disposing) _screenshot.Dispose();
+        if (disposing) { _hoverTimer.Stop(); _hoverTimer.Dispose(); _screenshot.Dispose(); }
         base.Dispose(disposing);
     }
 }

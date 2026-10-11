@@ -29,4 +29,7 @@ var negative=SelectionGeometry.ToScreen(new Rectangle(100,80,140,70),new Rectang
 Check(negative==new Rectangle(-1820,-120,140,70),"multi-monitor negative coordinate conversion");
 Check(SelectionGeometry.FromDrag(new Point(-300,-300),new Point(-200,-200),new Rectangle(0,0,500,500)).IsEmpty,"selection outside screen is empty");
 Check(!AppSettings.Normalize(new AppSettings {magnifier=new MagnifierSettings{enableTripleClick=true}}).magnifier.enableTripleClick,"legacy global triple click hook disabled");
+var hoverRect=SelectionGeometry.AroundTap(new Point(430,210),new Rectangle(0,0,1200,900),440,180);
+Check(hoverRect.Contains(new Point(430,210)) && hoverRect.Width==440 && hoverRect.Height==180,"hover text sample stays around cursor");
+Check(SelectionGeometry.AroundTap(new Point(1198,899),new Rectangle(0,0,1200,900),440,180).Bottom==900,"hover region clips near desktop edge");
 Console.WriteLine("Finished all logic smoke tests. OCR and live GUI tests NOT executed by this test suite.");
