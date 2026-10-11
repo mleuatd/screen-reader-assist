@@ -1,9 +1,7 @@
-# v0.2作業再開位置（2026-10-11）
+# v0.3 カーソル読み上げ版（2026-10-11）
 
-1. 正本: https://github.com/mleuatd/screen-reader-assist の main。
-2. Ctrl+Alt+Rを専用読み上げモード起動に変更。タッチ/マウス範囲入力は最前面の SelectionForm、1回タップは最大360×160pxの周辺をOCRする。
-3. Actions `38122996049` Windowsビルド/14件のロジックテストは成功。Webの設定検証も成功。
-4. v0.2.0-preview.1のGitHub Releasesは公開成功。旧v0.1.0-preview.1は古いキー割当である点に注意。
-5. README・Webサイトの最新版ZIPリンクを確認。
-6. Windows 11タッチPCで、通常アプリへマウス/touch操作が届かないこと、低DPI/高DPI、排他的フルスクリーン、OCR音声を確認する。未検証の場合はそのまま報告。
-7. 旧グローバル3回クリックフックは無効。Windows拡大は Alt+Shift+Z の試験操作として維持。
+1. 正本は mleuatd/screen-reader-assist の main。読み取りモードでカーソル約850ms静止→近いOCR行を読む。
+2. クリックは近傍行、ドラッグは矩形全体、Hでホバー読み上げ切替、Escで終了。
+3. Windowsビルド/ロジックテストとWebテスト、v0.3.0-preview.1のGitHub Releases公開結果を確認する。
+4. 実機でブラウザ/YouTubeリンクへの非干渉、2行以上タイトルの精度、タッチ環境を確認する。
+5. 専用GitHub Pages初期設定は未完了。Web体験版はraw.githack.comで公開。

@@ -41,6 +41,7 @@ byId('demo-repeat').addEventListener('click',()=>speak(state.lastText));
 byId('demo-custom-read').addEventListener('click',()=>speak(byId('demo-custom-text').value));
 
 for(const button of document.querySelectorAll('[data-mode]'))button.addEventListener('click',()=>{
+  if(typeof cancelDwell==='function')cancelDwell();
   for(const b of document.querySelectorAll('[data-mode]'))b.setAttribute('aria-pressed',String(b===button));
   for(const panel of document.querySelectorAll('.demo-panel'))panel.hidden=panel.id!=='mode-'+button.dataset.mode;
   state.mode=button.dataset.mode;
@@ -61,7 +62,11 @@ function readSelected(ids){
 for(const button of document.querySelectorAll('[data-pick]'))button.addEventListener('click',()=>readSelected([button.dataset.pick]));
 byId('read-all').addEventListener('click',()=>readSelected(targets.map(x=>x.dataset.sampleId)));
 let rangePointer=null;
+let dwellTimer=null,lastDwellId="";
+function cancelDwell(){if(dwellTimer!==null){clearTimeout(dwellTimer);dwellTimer=null;}}
+
 region.addEventListener('pointerdown',e=>{
+  cancelDwell();
   if(e.button!==0 && e.pointerType==='mouse')return;
   e.preventDefault();
   rangePointer={pointerId:e.pointerId,startX:e.clientX,startY:e.clientY,x:e.clientX,y:e.clientY};
@@ -71,12 +76,26 @@ region.addEventListener('pointerdown',e=>{
 function renderSelection(){if(!rangePointer)return;const r=region.getBoundingClientRect();const x1=rangePointer.startX-r.left,y1=rangePointer.startY-r.top,x2=rangePointer.x-r.left,y2=rangePointer.y-r.top;
   selectionRect.style.left=Math.min(x1,x2)+'px';selectionRect.style.top=Math.min(y1,y2)+'px';selectionRect.style.width=Math.abs(x2-x1)+'px';selectionRect.style.height=Math.abs(y2-y1)+'px';
 }
-region.addEventListener('pointermove',e=>{if(!rangePointer||rangePointer.pointerId!==e.pointerId)return;rangePointer.x=e.clientX;rangePointer.y=e.clientY;renderSelection();});
+region.addEventListener('pointermove',e=>{
+  if(rangePointer && rangePointer.pointerId===e.pointerId){rangePointer.x=e.clientX;rangePointer.y=e.clientY;renderSelection();return;}
+  if(e.pointerType==='touch' || state.mode!=='range')return;
+  cancelDwell();
+  const target=e.target.closest('.reading-target');
+  if(!target || !region.contains(target) || lastDwellId===target.dataset.sampleId)return;
+  dwellTimer=setTimeout(()=>{
+    dwellTimer=null;
+    if(state.mode!=='range' || rangePointer)return;
+    lastDwellId=target.dataset.sampleId;
+    readSelected([lastDwellId]);
+  },850);
+}); 
+region.addEventListener('pointerleave',()=>{cancelDwell();lastDwellId='';});
 region.addEventListener('pointerup',e=>{if(!rangePointer||rangePointer.pointerId!==e.pointerId)return;const p=rangePointer;rangePointer=null;selectionRect.hidden=true;
   const boxes=targetBoxes();const box={x1:p.startX,y1:p.startY,x2:e.clientX,y2:e.clientY};
   const isTap=Math.hypot(box.x2-box.x1,box.y2-box.y1)<8;
   let ids=isTap?[]:overlappingIds(box,boxes);
   if(!ids.length){const id=closestId(e.clientX,e.clientY,boxes);ids=id?[id]:[];}
+  lastDwellId='';
   readSelected(ids);
 });
 region.addEventListener('pointercancel',()=>{rangePointer=null;selectionRect.hidden=true});

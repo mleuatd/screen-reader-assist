@@ -1,6 +1,6 @@
 # Windows 11での試用手順（実験版）
 
-1. [試用版ZIP](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.2.0-preview.1/ScreenReaderAssist-win-x64.zip)を取得し、任意のフォルダーに展開します。
+1. [試用版ZIP](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.3.0-preview.1/ScreenReaderAssist-win-x64.zip)を取得し、任意のフォルダーに展開します。
 2. 展開した`ScreenReaderAssist.exe`を起動します。署名されていないためWindows SmartScreen警告が表示される場合があります。信頼できない場合は起動しないでください。
 3. 起動すると通知領域に常駐します。設定を開くには通知領域のアイコンをダブルクリックします。
 4. `Ctrl+Alt+R`で範囲選択、`Alt+Shift+M`で吹き出しクリック、`Alt+Shift+U`でフォーカス中のUI文字取得、`Alt+Shift+S`で停止、`Alt+Shift+P`で一時停止・再開、`Alt+Shift+Z`で一時拡大です。
@@ -15,3 +15,8 @@
 - 不具合が起きた場合は`Alt+Shift+S`で読み上げ停止、通知領域メニューからアプリ終了を試してください。
 
 **注意**: 上記キー変更はv0.2の試用版からです。旧v0.1.0-preview.1はAlt+Shift+Rのままです。タッチ1回で周辺を読む操作、最前面の入力受け取りの安定性はWindows実機で要検証です。
+
+### v0.3追加操作
+- `Ctrl+Alt+R`で読み取り専用画面に入り、カーソルを文字の上に約1秒止めて読み上げ。
+- タップ/クリックでも近い文字の一行を読む。ドラッグは全選択。Hで自動読み上げ切替、Escで終了。
+- 画像が固定されるため、読み取りモード中は背後のYouTube・リンクを操作できません。
