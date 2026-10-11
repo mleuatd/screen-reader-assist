@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0d111c">
+  <meta name="description" content="Screen Reader Assistをインストールせずに体験。音声読み上げ、漫画の吹き出し、画面拡大をブラウザで試せます。">
+  <title>無料お試し体験 — Screen Reader Assist</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="demo.css">
+</head>
+<body>
+  <a class="skip" href="#content">体験エリアへ移動</a>
+  <header><div class="container"><a class="logo demo-brand" href="index.html">Screen Reader Assist</a><nav aria-label="主要メニュー"><a href="index.html">トップ</a><a href="index.html#settings">設定</a><a href="https://github.com/mleuatd/screen-reader-assist/releases">Windows版</a></nav></div></header>
+  <main id="content" class="container demo-layout">
+    <section class="demo-hero" aria-labelledby="demo-title">
+      <p class="eyebrow">ブラウザで体験・インストール不要・無料</p>
+      <h1 id="demo-title">画面を読む、漫画を読む、<br>文字を拡大する。</h1>
+      <p>スマホでもパソコンでも、このページだけでアプリの操作イメージを試せます。まず下のモードを選んでください。</p>
+      <div class="demo-honesty" role="note"><strong>これは体験用のサンプルです。</strong>サンプル内の文字を使うので、実際のWindows画面を認識するOCRは行いません。音声は、お使いのブラウザの読み上げ機能で実際に再生します。ほかのアプリの画面読み取りにはWindows版が必要です。</div>
+    </section>
+
+    <section class="card" aria-labelledby="speech-title">
+      <h2 id="speech-title">声と読み上げを設定する</h2>
+      <div class="demo-controls">
+        <div class="demo-control"><label for="demo-rate">読み上げ速度</label><div class="demo-inline"><input id="demo-rate" type="range" min="0.5" max="2.5" value="1" step="0.1"><output id="demo-rate-out" for="demo-rate">1.0倍</output></div></div>
+        <div class="demo-control"><label for="demo-voice">読み上げ音声</label><select id="demo-voice"><option value="">端末の既定音声</option></select></div>
+        <div class="demo-control"><label for="demo-pitch">声の高さ</label><div class="demo-inline"><input id="demo-pitch" type="range" min="0.5" max="2" value="1" step="0.1"><output for="demo-pitch" id="demo-pitch-out">1.0</output></div></div>
+      </div>
+      <div class="demo-actions"><button class="button secondary" id="demo-voice-test" type="button">サンプル音声を再生</button><button class="button secondary" id="demo-stop" type="button">読み上げを停止</button><button class="button secondary" id="demo-repeat" type="button">直前の文章を再生</button></div>
+      <p class="fine">音声の種類と発声は端末・ブラウザに依存します。音が出ない場合は音量や日本語音声の有無をご確認ください。音声・文章はサーバーに送信しません。</p>
+      <p id="demo-status" role="status" aria-live="polite" class="demo-status">モードを選ぶと体験できます。</p>
+      <details><summary>自分の文章を読ませる</summary><label for="demo-custom-text">読み上げたい文章</label><textarea id="demo-custom-text" rows="3" maxlength="1200">こんにちは。これはScreen Reader Assistのブラウザ体験版です。</textarea><div class="demo-actions"><button id="demo-custom-read" class="button secondary" type="button">入力した文章を読む</button></div></details>
+    </section>
+
+    <section class="card" aria-labelledby="modes-title">
+      <h2 id="modes-title">何を試しますか？</h2>
+      <div class="demo-mode-buttons" role="group" aria-label="体験モード">
+        <button class="mode-button" data-mode="range" aria-pressed="true" type="button">① 範囲読み上げ</button>
+        <button class="mode-button" data-mode="manga" aria-pressed="false" type="button">② 漫画の吹き出し</button>
+        <button class="mode-button" data-mode="zoom" aria-pressed="false" type="button">③ 画面拡大</button>
+      </div>
+
+      <section class="demo-panel" id="mode-range" aria-labelledby="range-title">
+        <h3 id="range-title">範囲を選んで読み上げる</h3>
+        <p>枠内をマウスや指でなぞると、その範囲に重なった文章を読み上げます。タップだけなら、近い文章を読みます。</p>
+        <div class="sample-screen select-screen" id="range-screen" tabindex="0" aria-label="読み取り対象のサンプル画面。キーボードの場合は下の各文章のボタンを使用してください">
+          <div class="sample-window-top"><span aria-hidden="true">▣</span> サンプルのWindows画面 <span class="fake-window-controls" aria-hidden="true">— □ ×</span></div>
+          <div class="sample-body">
+            <div class="sample-line reading-target" data-sample-text="新しいお知らせがあります。次の更新は午後三時です。" data-sample-id="notice"><strong>お知らせ</strong><p>新しいお知らせがあります。次の更新は午後三時です。</p></div>
+            <div class="sample-line reading-target" data-sample-text="作業フォルダーには資料が三つあります。必要なファイルを選んでください。" data-sample-id="folder"><strong>フォルダーの説明</strong><p>作業フォルダーには資料が三つあります。必要なファイルを選んでください。</p></div>
+            <div class="sample-line reading-target" data-sample-text="ゲームのイベントが始まりました。会話の文章も読み上げ対象にできます。" data-sample-id="game"><strong>ゲームの文章</strong><p>ゲームのイベントが始まりました。会話の文章も読み上げ対象にできます。</p></div>
+          </div>
+          <div id="selection-rectangle" class="selection-rectangle" hidden aria-hidden="true"></div>
+        </div>
+        <div class="demo-actions" aria-label="キーボードによる読み上げ範囲指定">
+          <button class="button secondary range-pick" type="button" data-pick="notice">お知らせを読む</button>
+          <button class="button secondary range-pick" type="button" data-pick="folder">フォルダーを読む</button>
+          <button class="button secondary range-pick" type="button" data-pick="game">ゲームの文章を読む</button>
+          <button class="button secondary" type="button" id="read-all">全体を読む</button>
+        </div>
+        <p class="demo-result-title">選択した文章</p><p id="range-result" class="demo-result" aria-live="polite">まだ選択されていません。</p>
+        <p class="fine">ここでは表示済みの例文から抽出する模擬動作です。画面画像を解析するOCRの認識精度を示すものではありません。</p>
+      </section>
+
+      <section class="demo-panel" id="mode-manga" aria-labelledby="manga-title" hidden>
+        <h3 id="manga-title">漫画の吹き出しをタップ</h3>
+        <p>好きな吹き出しをクリック、またはキーボードのTabキーで選択してEnterキーを押してください。選んだ吹き出しの文章を読み上げます。</p>
+        <div class="comic-page" aria-label="オリジナルの架空の漫画のサンプル">
+          <div class="comic-panel comic-panel-a"><div class="comic-decor" aria-hidden="true"><span class="sun"></span><span class="hill"></span></div><button type="button" class="speech-bubble bubble-vertical" data-bubble-text="今日はいい天気だね。" aria-label="吹き出し1、今日はいい天気だね。">今日はいい天気だね。</button><span class="comic-label">1コマ目</span></div>
+          <div class="comic-panel comic-panel-b"><div class="comic-decor" aria-hidden="true"><span class="book"></span></div><button type="button" class="speech-bubble" data-bubble-text="新しい本を見つけたよ。いっしょに読もう。" aria-label="吹き出し2、新しい本を見つけたよ。いっしょに読もう。">新しい本を見つけたよ。<br>いっしょに読もう。</button><span class="comic-label">2コマ目</span></div>
+          <div class="comic-panel comic-panel-c"><div class="comic-decor" aria-hidden="true"><span class="sparkles">✦</span></div><button type="button" class="speech-bubble bubble-vertical" data-bubble-text="わあ、楽しそう！" aria-label="吹き出し3、わあ、楽しそう！">わあ、楽しそう！</button><span class="comic-label">3コマ目</span></div>
+        </div>
+        <div class="demo-actions"><button class="button secondary" id="manga-read-all" type="button">3つの吹き出しを順番に読む</button></div>
+        <p class="demo-result-title">選んだ吹き出し</p><p id="manga-result" class="demo-result" aria-live="polite">吹き出しをタップしてください。</p>
+        <p class="fine">吹き出しの位置と文章はあらかじめ用意したサンプルです。実際の漫画画像から吹き出しを自動検出しているわけではありません。</p>
+      </section>
+
+      <section class="demo-panel" id="mode-zoom" aria-labelledby="zoom-title" hidden>
+        <h3 id="zoom-title">Android風の画面拡大を試す</h3>
+        <p>下のサンプル画面を素早く3回タップすると拡大します。もう一度3回タップすると解除します。3回目を押したまま動かすと拡大領域を移動し、離すと元に戻ります。</p>
+        <div class="demo-controls"><div class="demo-control"><label for="demo-zoom-level">倍率</label><div class="demo-inline"><input id="demo-zoom-level" type="range" min="1.5" max="4" step="0.5" value="2"><output for="demo-zoom-level" id="demo-zoom-out">2.0倍</output></div></div></div>
+        <div class="zoom-viewport" id="zoom-viewport" tabindex="0" aria-label="画面拡大サンプル。マウスまたはタッチでは3回連続でタップしてください。キーボードでは下の拡大ボタンを使えます。">
+          <div class="zoom-content" id="zoom-content">
+            <div class="sample-window-top">▣ サンプル画面 <span class="fake-window-controls" aria-hidden="true">— □ ×</span></div>
+            <div class="zoom-sample-body">
+              <p class="mini-label">Windows 11</p><h4>細かい文字でも拡大できます</h4>
+              <div class="fake-file">📁 仕事の資料</div><div class="fake-file">📄 説明書.txt</div><div class="fake-file">📄 スケジュール.xlsx</div>
+              <p class="tiny-copy">ここでは画面全体ではなく、体験エリア内だけを拡大します。</p>
+            </div>
+          </div>
+        </div>
+        <div class="demo-actions">
+          <button class="button secondary" id="zoom-toggle" type="button" aria-pressed="false">拡大する</button>
+          <button class="button secondary" id="zoom-left" type="button">左へ移動</button>
+          <button class="button secondary" id="zoom-right" type="button">右へ移動</button>
+          <button class="button secondary" id="zoom-up" type="button">上へ移動</button>
+          <button class="button secondary" id="zoom-down" type="button">下へ移動</button>
+          <button class="button secondary" id="zoom-reset" type="button">元に戻す</button>
+        </div>
+        <p id="zoom-state" class="demo-result" role="status" aria-live="polite">拡大していません。</p>
+        <p class="fine">この拡大はブラウザ内のサンプルに限定され、Windows画面全体の拡大や実際のクリックの競合回避は試験していません。</p>
+      </section>
+    </section>
+
+    <section class="card" aria-labelledby="next-title"><h2 id="next-title">実際のWindowsアプリを試すには</h2><p>ブラウザ版の操作感がよければ、Windows 11の通知領域に常駐するアプリの試作版も入手できます。</p><a class="button primary" href="https://github.com/mleuatd/screen-reader-assist/releases/download/v0.1.0-preview.1/ScreenReaderAssist-win-x64.zip">Windows用試作版をダウンロード</a><p class="fine">実機の画面読み上げ・拡大などはまだ検証中です。試作版は無署名です。</p></section>
+  </main>
+  <script type="module" src="demo.js"></script>
+</body>
+</html>

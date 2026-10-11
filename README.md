@@ -75,3 +75,11 @@ dotnet publish src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release -r wi
 
 - [Windows 11 x64向け試験版 ZIP (v0.1.0-preview.1)](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.1.0-preview.1/ScreenReaderAssist-win-x64.zip)
 - **注意**: 実機GUI検証は未実施。初回起動時のSmartScreen警告の可能性あり。Windows標準のOCR言語と読み上げ音声が必要です。
+
+## ブラウザ体験版（アプリのインストール不要）
+
+- [操作体験デモ](https://mleuatd.github.io/screen-reader-assist/demo.html) — サンプル画面の範囲読み上げ、漫画の吹き出し読み上げ、3回タップの拡大を試せます。
+- 利用者のブラウザの SpeechSynthesis によって実際の音声合成を行います（発声可否は音声環境に依存）。
+- この体験版は画像OCRを実行せず、サンプルに紐付く文章を取得する模擬動作です。Windows内の別アプリの画面は読み取れません。
+- 漫画の吹き出し検出を自動実行するものではありません。サンプル吹き出しはあらかじめ用意されています。
+- GitHub Pagesの初期有効化が必要な場合、Settings → Pages → Build and deployment → Source: GitHub Actions を選んでください。

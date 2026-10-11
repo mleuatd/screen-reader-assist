@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {combinedSampleText,overlappingIds,closestId,TripleTapTracker,boundZoom} from './demo-logic.mjs';
+test('combine example OCR text without empty sections',()=>assert.equal(combinedSampleText([{text:'こんにちは'},{text:'  '},{text:'世界。'}]),'こんにちは。世界。'));
+test('selection rectangle intersects the correct two targets',()=>assert.deepEqual(overlappingIds({x1:15,y1:15,x2:60,y2:60},[{id:'a',left:0,top:0,right:30,bottom:30},{id:'b',left:30,top:30,right:70,bottom:70},{id:'c',left:71,top:71,right:90,bottom:90}]),['a','b']));
+test('selection rectangle supports reverse drag',()=>assert.deepEqual(overlappingIds({x1:60,y1:60,x2:10,y2:10},[{id:'a',left:5,top:5,right:25,bottom:25}]),['a']));
+test('tap selects closest target',()=>assert.equal(closestId(90,90,[{id:'a',left:0,top:0,right:10,bottom:10},{id:'b',left:100,top:100,right:110,bottom:110}]),'b'));
+test('three nearby taps activate, not two',()=>{const t=new TripleTapTracker();assert.equal(t.add({time:0,x:10,y:10}),false);assert.equal(t.add({time:180,x:11,y:11}),false);assert.equal(t.add({time:300,x:12,y:12}),true);assert.equal(t.count,0)});
+test('slow or distant gestures reset tap count',()=>{const t=new TripleTapTracker();assert.equal(t.add({time:0,x:0,y:0}),false);assert.equal(t.add({time:900,x:0,y:0}),false);assert.equal(t.add({time:990,x:100,y:100}),false);assert.equal(t.count,1)});
+test('zoom range clamped',()=>{assert.equal(boundZoom(200),4);assert.equal(boundZoom(0.1),1.5);assert.equal(boundZoom('x'),2)});

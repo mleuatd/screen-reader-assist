@@ -24,3 +24,9 @@ Windows向け自動テストは`tests/ScreenReaderAssist.Tests/`に存在する�
 - 2026-10-11: `38116579079` import / web-test / windows-build の3ジョブがすべて成功。自己完結型Windows ZIPアーティファクトの存在とサイズ74,134,083バイトをAPIで確認。実機画面・音声出力を検証したわけではない。
 
 | Windowsプレリリース公開 | PASS | `v0.1.0-preview.1` GitHub Releasesに74,555,912バイトの配布ZIPを公開確認、Actions `38116822637` 成功 |
+
+### 2026-10-11 ブラウザ体験版
+- Node v22 `node --test *.test.mjs`: **11 passed / 0 failed**（既存設定4、デモロジック7）。
+- Python Playwright + Chromium headless（HTML/CSS/JSをインライン化して評価、ローカルHTTPへのネットワークアクセス制限のため）: desktop 1280px / mobile 390px で漫画タップ・モード切替・範囲ドラッグ・3クリック拡大・フォーム入力、JavaScript例外0。ページ配信環境の統合試験は未実施。
+- Web Speech API: `speechSynthesis.speak()`呼び出しと状態表示を検証。実音声の聴感品質は検証していない。
+- 画像OCR、実漫画の自動吹き出し抽出、PC全体の拡大: Webデモでは**未実装（模擬表示）**。

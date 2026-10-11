@@ -23,3 +23,10 @@
 - [ ] 音声プラグイン・声質調整実装
 
 新しい公開リポジトリ `mleuatd/screen-reader-assist` にソースコードと4つの常設GitHub Actionsワークフローを反映済み。自動ビルド成功。Pages作成には現在のGitHub Actions権限では足りず、所有者がSettings > PagesからGitHub Actionsを選択する必要がある。
+
+### 2026-10-11 Web体験版
+- [x] ブラウザ体験版を追加（`site/demo.html`、`demo.js`、`demo.css`、`demo-logic.mjs`）。
+- [x] 模擬範囲選択、漫画吹き出し、3回タップ拡大、Web Speech API読み上げUI。
+- [x] ブラウザ非依存のロジック7件と従来の設定4件の合計11件のNodeテストが通過。
+- [x] ローカルのheadless Chromiumでスマホ・PC表示と操作イベントを検証。JavaScript例外0件。音声出力の聴感品質は未確認。
+- [ ] GitHub Pages有効化・本番サイト配信の確認。
