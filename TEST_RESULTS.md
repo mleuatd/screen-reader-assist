@@ -34,3 +34,8 @@ Windows向け自動テストは`tests/ScreenReaderAssist.Tests/`に存在する�
 ### 2026-10-11 代替公開先HTTPスモークテスト
 - [x] GitHub Actions `38118586141`: raw.githack.com 経由で demo.html / demo.css / style.css / demo.js / demo-logic.mjs / index.html / app.js / settings.js のHTTP 200と非空・HTMLマーカー確認すべて成功。
 - [ ] 読み上げの実音声、実端末の3回タップ、外部プロキシのブラウザ確認画面からの実遷移は環境未検証。
+
+### ドラム側のGitHub Pagesに独立プレビューデモを作成
+- 既存 Pages の配下に8つの静的ファイルを追加。専用リポジトリ内の更新は自動的には反映されない。
+- 公開導線 https://mleuatd.github.io/dtx-drum-flow/screen-reader-assist/demo.html
+- Pages専用検証: `mleuatd/dtx-drum-flow/.github/workflows/verify-screen-reader-pages.yml` にHTTPテストを追加。公開実URL確認は実行結果を見て記録する。

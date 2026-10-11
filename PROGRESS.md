@@ -35,3 +35,10 @@
 - [x] raw.githack.com で本リポジトリのWeb体験版を公開。追加サーバー・費用・ユーザー側のGitHub Pages設定は不要。
 - [x] Actions `38118586141` で8リソースのHTTP 200と非空ファイル・HTMLマーカーを検証（ジョブ成功）。
 - [ ] 本家 GitHub Pages URL `mleuatd.github.io/screen-reader-assist/` は別途所有者による初期有効化が必要。
+
+### GitHub Pages実公開準備
+- [x] 既設の`dtx-drum-flow` Pagesに`site/screen-reader-assist/`として8つの静的公開リソースを追加（コミット`7140b5c`）。
+- [x] ドラム本体のソースコード・挙動は未変更。
+- [x] GitHub Pages上の独立URL：https://mleuatd.github.io/dtx-drum-flow/screen-reader-assist/demo.html
+- [ ] 新規の試用版更新時にPagesミラーを同期する仕組みは未実装。
+- [ ] 公開実URLのHTTP 200を確認する検証ワークフローを新設、実行結果を確認する。
