@@ -168,3 +168,8 @@ Windows向け自動テストは`tests/ScreenReaderAssist.Tests/`に存在する�
 - Web CI `38176257676` **成功**。
 - Windows ZIPプレリリース Actions `38176257680` **成功**。Release `v0.6.3-preview.1`、ZIP `ScreenReaderAssist-win-x64.zip`、74,585,786バイト。新バージョンであることをAPIから確認。
 - WindowsのGUI表示、Ctrl+Alt+R実入力、通知領域アイコン、SAPIからスピーカーへの実再生は実機側のログ確認待ち。
+
+### v0.6.4 開始・終了の通知音
+- 開始音は上昇2音（660Hz→990Hz）、終了音は下降2音（660Hz→440Hz）、各約185ms。WAVバッファを生成し、音声ストリームをプロセス中保持。
+- Windowsロジック試験でWAVヘッダー（RIFF/WAVE、22,050Hz）、再生時間に相当する容量、開始と終了の波形相違を検証。
+- GitHub Actionsはヘッドレス環境のため、音がスピーカーから聞こえるかは未実機検証。

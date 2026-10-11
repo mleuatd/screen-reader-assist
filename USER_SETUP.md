@@ -1,6 +1,6 @@
 # Windows 11での試用手順（実験版）
 
-1. [試用版ZIP](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.6.3-preview.1/ScreenReaderAssist-win-x64.zip)を取得し、任意のフォルダーに展開します。
+1. [試用版ZIP](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.6.4-preview.1/ScreenReaderAssist-win-x64.zip)を取得し、任意のフォルダーに展開します。
 2. 展開した`ScreenReaderAssist.exe`を起動します。署名されていないためWindows SmartScreen警告が表示される場合があります。信頼できない場合は起動しないでください。
 3. 起動すると通知領域に常駐します。設定を開くには通知領域のアイコンをダブルクリックします。
 4. `Ctrl+Alt+R`で範囲選択、`Alt+Shift+M`で吹き出しクリック、`Alt+Shift+U`でフォーカス中のUI文字取得、`Alt+Shift+S`で停止、`Alt+Shift+P`で一時停止・再開、`Alt+Shift+Z`で一時拡大です。
@@ -62,3 +62,6 @@ Web設定画面の「音声の読み上げ速度」には横長スライダー�
 4. 次に設定画面を隠し、文字のある画面で`Ctrl+Alt+R`を押します。範囲選択用の静止画が表示されたら、文章の上をドラッグして選択してください。`Ctrl+Alt+R`を押すだけでは自動的に指定領域のOCRが始まらず、範囲を選ぶ必要があります。
 5. 読めなければ、通知領域→「設定を開く」→「動作ログを開く」を押すか、EXEと同じフォルダーの`ScreenReaderAssist.log`をメモ帳で開き、内容をこのチャットに添付してください。`ScreenReaderAssist.previous.log`もある場合は必要に応じて添付できます。
 6. ログはOCR全文や画面画像を保存しない設計ですが、エラーには利用中のフォルダー名などが含まれる場合があります。共有前に内容を確認してください。
+
+## v0.6.4：範囲選択の確認音
+`Ctrl+Alt+R`を押すと、範囲選択を受け付けた合図として「高く上がる二音」が鳴ります。選択が終わったときや`Esc`でキャンセルしたときは「低く下がる二音」が鳴ります。終了音は範囲選択画面を閉じた合図であり、文字認識や読み上げ音声が終わった合図ではありません。確認音が出ない場合は、Windowsの音量や出力先と、EXEの隣の`ScreenReaderAssist.log`にある`[操作音]`を確認してください。

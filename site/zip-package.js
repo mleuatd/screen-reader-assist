@@ -2,7 +2,7 @@ import {parseIni,writeIni} from './ini.js';
 import {defaults} from './settings.js';
 
 // Uses the locally hosted, MIT-licensed JSZip. The uploaded ZIP never leaves the browser.
-export const OFFICIAL_PACKAGE_URL='https://github.com/mleuatd/screen-reader-assist/releases/download/v0.6.3-preview.1/ScreenReaderAssist-win-x64.zip';
+export const OFFICIAL_PACKAGE_URL='https://github.com/mleuatd/screen-reader-assist/releases/download/v0.6.4-preview.1/ScreenReaderAssist-win-x64.zip';
 export const MAX_PACKAGE_BYTES=180*1024*1024;
 
 function executablePath(zip){

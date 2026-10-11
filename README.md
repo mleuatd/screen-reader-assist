@@ -1,11 +1,11 @@
-# Screen Reader Assist — Windows 11 視覚障害支援アプリ（試作 v0.6.3）
+# Screen Reader Assist — Windows 11 視覚障害支援アプリ（試作 v0.6.4）
 
 **[インストール不要でブラウザ体験（スマホ・PC）](https://raw.githack.com/mleuatd/screen-reader-assist/main/site/demo.html)** | [Web設定画面（GitHub経由）](https://raw.githack.com/mleuatd/screen-reader-assist/main/site/index.html)
 
 
 画面の任意範囲からWindowsの日本語OCRで文字を取り出し、インストール済みの音声合成エンジンで読み上げる、常駐型オープンソースアプリの**試作ソースコード**です。
 
-> **検証状況（2026-10-11）:** GitHub Actions のWindowsビルド・ロジックテストとWeb設定テストが成功。`win-x64` の配布アーティファクト生成を確認済み。v0.5のWindowsビルドと43件のロジックテストに成功。Windows GUIでの操作、ゲーム・漫画OCR・タッチ入力などの実機検証は未実施。GitHub Releases 最新プレビュー v0.6.3-preview.1 を公開済み。GitHub Pagesは初期有効化待ちですが、無料のGitHubファイル表示サービスで公開体験版を利用可能。試作版につき未検証機能に注意。
+> **検証状況（2026-10-11）:** GitHub Actions のWindowsビルド・ロジックテストとWeb設定テストが成功。`win-x64` の配布アーティファクト生成を確認済み。v0.5のWindowsビルドと43件のロジックテストに成功。Windows GUIでの操作、ゲーム・漫画OCR・タッチ入力などの実機検証は未実施。GitHub Releases 最新プレビュー v0.6.4-preview.1 を公開済み。GitHub Pagesは初期有効化待ちですが、無料のGitHubファイル表示サービスで公開体験版を利用可能。試作版につき未検証機能に注意。
 
 ## 主な機能（実装済みコード／動作未検証）
 
@@ -76,7 +76,7 @@ dotnet publish src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release -r wi
 
 ## 試験版を入手する
 
-- [Windows 11 x64向け試験版 ZIP (v0.6.3-preview.1)](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.6.3-preview.1/ScreenReaderAssist-win-x64.zip)
+- [Windows 11 x64向け試験版 ZIP (v0.6.4-preview.1)](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.6.4-preview.1/ScreenReaderAssist-win-x64.zip)
 - **注意**: 実機GUI検証は未実施。初回起動時のSmartScreen警告の可能性あり。Windows標準のOCR言語と読み上げ音声が必要です。
 
 ## ブラウザ体験版（アプリのインストール不要）
@@ -114,7 +114,7 @@ dotnet publish src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release -r wi
 - ドラッグして離すと囲んだ座標をOCR。短いタップの場合は周辺（最大360×160ピクセル）をOCR。Escで中止。
 - 選択中は通常アプリにクリック操作が伝わらないことを意図した構造ですが、UACセキュアデスクトップ、排他的フルスクリーン、他のTopMostウィンドウ等の特例があります。実機での入力非干渉テストは未完了。
 - 以前の設定ファイルの`magnifier.enableTripleClick:true`は読み込み時に無効化。グローバル3連クリックフックは使用しません。
-- 対応バージョンは次のプレビューリリース以降です。旧`v0.6.3-preview.1`はホットキーが違います。
+- 対応バージョンは次のプレビューリリース以降です。旧`v0.6.4-preview.1`はホットキーが違います。
 
 ## v0.3 カーソルを止めて読み上げ（試作）
 
@@ -209,3 +209,12 @@ Web設定画面は速度のスライダーを大きく表示し、遅い（-10�
 - **プライバシー:** 画面の画像、OCRで読んだ文章、クリップボード内容、表示中のサイトURL、カーソル座標は診断ログに保存しません。ただしWindows/.NET例外メッセージにはファイルパスなどの環境情報が含まれる可能性があります。ログ共有前に確認してください。
 - **ログ書き込み権限:** EXEを読み取り専用のフォルダーに置くとログ保存に失敗します。書き込み可能な場所へZIPを解凍してください。失敗時は設定画面の稼働状態にエラーを表示します。
 - `Ctrl+Alt+R`は静止画ベースの範囲選択画面を起動し、**そこでクリック・ドラッグ・Enterを押すとOCR**します。押しただけで必ず音声が出る仕組みではありません。何も起きない場合はログでホットキー登録/画面表示を確認します。
+
+## v0.6.4：Ctrl+Alt+Rの開始音・終了音
+
+- `Ctrl+Alt+R`で範囲選択モードを受け付けた直後に、**高く上がる二音**を鳴らします。
+- 範囲選択のオーバーレイを終了した直後に、**低く下がる二音**を鳴らします。クリック/ドラッグで確定した場合も、`Esc`で取り消した場合も終了音が鳴ります。
+- 終了音はOCRや音声合成の結果を待たず、範囲選択モードが閉じたことだけを知らせます。音声読み上げの終了を示す音ではありません。
+- 各音は約185ミリ秒。C#で生成した異なるWAV波形を`System.Media.SoundPlayer`で非同期再生します。音声合成のSAPIや日本語音声の有無には依存しません。ネットワーク通信も追加データファイルも不要です。
+- 二重操作で範囲選択が既に進行中の場合は、新しい開始音を出しません。音声再生に失敗した場合でもOCRとホットキーは動作を継続し、`ScreenReaderAssist.log`の`[操作音]`に成功要求・例外を記録します。
+- 自動テストはWAV形式・サンプルレート・2種類の波形・短い長さを検証します。実Windows 11のスピーカー・音量・オーディオ出力で聞こえるかは未確認です。
