@@ -1,7 +1,7 @@
 # 未解決課題（重大度順）
 
-- **BLOCKER-01 GitHub repo作成**: 既存の接続済みGitHubアクションは既存repo内への作成・更新を扱えるが、新規repository作成アクションがない。`mleuatd/screen-reader-assist`をGitHubで新規作成後、本ソースをプッシュする必要がある。
-- **BLOCKER-02 Windowsビルド未確認**: 現在のコンテナに`dotnet`がなく、LinuxなのでWindows API動作を確認できない。`windows-build.yml`実行後のコンパイル結果に従い必要な修正を実施。
+- **RESOLVED-01 GitHub repo作成・ソース投入**: `mleuatd/screen-reader-assist` を作成し35ファイル投入済み。
+- **RESOLVED-02 Windowsビルド**: GitHub Actions `38116579079` でC#ビルド・ロジックテスト・publish・成果物アップロード成功。GUI操作は未検証。
 - **HIGH-03 OCRモデル**: WindowsのOCR言語インストール・最大寸法・縦書き文の読み順を検証する。`Manga OCR`など適切なライセンスのローカル認識エンジンは未接続。
 - **HIGH-04 UIA対応**: フォーカス中の文字取得のみで、選択した任意範囲のUIA走査は未実装。
 - **HIGH-05 3回クリック拡大**: マウス入力の衝突とマルチモニター/DPI/UAC/拡大中の入力変換を実機検証。標準状態では無効。
@@ -11,3 +11,5 @@
 - **MED-09 実キャプチャのテスト**: ゲーム・漫画・複数ディスプレイでユーザー協力によるテストを行う。
 
 - **MED-10 ブラウザE2Eテスト**: Playwright/Chromiumが実際のWebページへの`file://`と`http://127.0.0.1`遷移を管理者ポリシーにより拒否したため、ブラウザ実操作は未検証。GitHub Pages公開後に再テスト。
+
+- **BLOCKER-11 GitHub Pages初期有効化**: GitHub Actionsの`actions/configure-pages@v5`で404→自動作成は403 `Resource not accessible by integration`。リポジトリ所有者がSettings > Pages > Build and deployment > SourceをGitHub Actionsに設定する必要がある。

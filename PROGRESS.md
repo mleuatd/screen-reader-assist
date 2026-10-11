@@ -12,12 +12,14 @@
 - [x] Linux/Node.jsで設定サイトのJSテスト4/4件成功
 - [x] XML/HTML/YAML構文検査成功
 - [ ] WebブラウザE2Eテスト（環境のURLアクセス制限によりブロック）
-- [ ] Windowsでのコンパイル成功確認（現環境にdotnetとWindowsがない）
+- [x] GitHub ActionsのWindows runnerでアプリのコンパイル・ロジックテスト・自己完結型publish成功
 - [ ] Windows画面の操作テスト、実機/仮想GUIテスト
 - [ ] 漫画OCR精度・縦書き読み順の検証
 - [ ] アプリのGUIアクセシビリティ検証
-- [ ] GitHubリポジトリ新規作成・コードコミット・Pages有効化
-- [ ] Windowsビルド成果物の実体確認・Releases公開
+- [x] GitHubリポジトリ新規作成・35ソースファイル反映
+- [ ] Pages有効化（所有者操作が必要）
+- [x] Windowsビルドアーティファクト生成の実体・サイズ確認
+- [ ] Releases公開
 - [ ] 音声プラグイン・声質調整実装
 
-新しいリポジトリ `mleuatd/screen-reader-assist` は2026-10-11時点で存在せず、利用可能なGitHub連携アクションにリポジトリ作成がないため、リポジトリへの反映はブロック中。元のドラム／株式リポジトリは変更していない。
+新しい公開リポジトリ `mleuatd/screen-reader-assist` にソースコードと4つの常設GitHub Actionsワークフローを反映済み。自動ビルド成功。Pages作成には現在のGitHub Actions権限では足りず、所有者がSettings > PagesからGitHub Actionsを選択する必要がある。
