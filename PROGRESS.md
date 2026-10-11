@@ -137,3 +137,10 @@
 - [x] CIとWindowsリリースワークフローでINIを実行ファイルの隣へ必ず同梱するよう変更。
 - [ ] ブラウザによる公式GitHub Release ZIPの直接取得がCORS制限なく動くかは未確認。不可なら公式ZIPをダウンロードして取り込む方式を提供。
 - [ ] Windows実機で展開したEXEがINIを読み込み、編集・保存・再起動できるかの操作確認。
+
+### v0.6 配布確認済み
+- [x] Windowsビルド＋INIロジックテスト53件成功（Actions `38153717247`）。
+- [x] Web INI・ZIPテストを含むNode試験26件成功（Actions `38153717226`）。
+- [x] EXE/INIの同一publishフォルダーへの配置を確認するWindows CIステップ成功。
+- [x] v0.6.0-preview.1をGitHub Releasesへ公開。Actions `38153717250` 成功（ZIP 74,582,881バイト）。
+- [ ] 利用者の実PCでINI保存とZIP再編集画面の動作を実機検証する。

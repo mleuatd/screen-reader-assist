@@ -126,3 +126,9 @@ Windows向け自動テストは`tests/ScreenReaderAssist.Tests/`に存在する�
 - Web NodeテストでJSZipの実ZIPを生成し、EXE内容と追加ファイルを保持しつつ、INIだけ変更して再エクスポートすることを検証する。
 - 配布ZIPにEXEとINIが同じ場所にあることをGitHub Windows Actionsで検査する。
 - 外部GitHub ZIPのブラウザ直接fetchはCORS/配布CDNに依存しうるため実機Webでの検証が別途必要。
+
+### v0.6実行結果（2026-10-12）
+- Windows CI `38153717247`: **成功**、53件のPASSログ確認。ZIP作成前の `publish/ScreenReaderAssist.exe` と `publish/settings.ini` の存在検証も成功。
+- Web CI `38153717226`: **成功**、26件PASS・0件FAIL。テストでは合成ZIPからアプリのEXEと他ファイルを保持し、INIを変更してZIPを再作成。
+- Release workflow `38153717250`: **成功**。v0.6.0-preview.1の配布ZIPサイズは74,582,881バイト。
+- GitHub Release ZIPのブラウザ側直接fetchはCORSに依存するため**未実機検証**。失敗時にはZIPをダウンロード→Webへドラッグ＆ドロップする経路を実装済み。
