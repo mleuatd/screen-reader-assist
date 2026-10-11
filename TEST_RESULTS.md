@@ -162,3 +162,9 @@ Windows向け自動テストは`tests/ScreenReaderAssist.Tests/`に存在する�
 ### v0.6.3 診断ログ・動作状況（検証項目）
 - `ScreenReaderAssist.log`が実行ファイルと同じ場所に作成されること、リアルタイム購読で変更通知が届くこと、最近のログを取得できることのロジックテストを追加。
 - 範囲選択・OCR・SAPIを追跡する処理をWindows本体へ追加。GUI実機のショートカット・実OCR・音声ハードウェアはGitHub runnerでは未測定。
+
+### v0.6.3 ログ付きWindows版の公開確認（2026-10-12）
+- Windows CI `38176257674` **成功、71件PASS**。新規確認項目：EXE横のログ名、ファイル作成、ライブ購読通知、スナップショット取得。
+- Web CI `38176257676` **成功**。
+- Windows ZIPプレリリース Actions `38176257680` **成功**。Release `v0.6.3-preview.1`、ZIP `ScreenReaderAssist-win-x64.zip`、74,585,786バイト。新バージョンであることをAPIから確認。
+- WindowsのGUI表示、Ctrl+Alt+R実入力、通知領域アイコン、SAPIからスピーカーへの実再生は実機側のログ確認待ち。
