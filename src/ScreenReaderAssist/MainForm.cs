@@ -20,6 +20,7 @@ public sealed class MainForm : Form
     private readonly TextBox _last = new() { Multiline=true, ReadOnly=true, ScrollBars=ScrollBars.Vertical, Height=110, Dock=DockStyle.Fill, AccessibleName="最後に認識した文章" };
     private Rectangle? _lastRect;
     private bool _busy,_quitting,_diagnosingJapanese;
+    private bool _settingsMayBeShown;
     private readonly SemaphoreSlim _hoverGate = new(1,1);
     private string _lastHoverSpoken="";
     private string _lastText="";
@@ -42,9 +43,17 @@ public sealed class MainForm : Form
         MinimumSize=new Size(660,610);
         Size=new Size(720,660);
         StartPosition=FormStartPosition.CenterScreen;
-        FormClosing+=(_,e)=>{ if(!_quitting) {e.Cancel=true;Hide();} };
+        FormClosing+=(_,e)=>{
+            // Only an intentional settings-window close hides it. Windows shutdown still exits.
+            if(!_quitting && e.CloseReason==CloseReason.UserClosing) {
+                e.Cancel=true;
+                HideSettings();
+            }
+        };
         _tray=new NotifyIcon { Icon=SystemIcons.Information, Visible=true, Text="Screen Reader Assist" };
-        var menu=new ContextMenuStrip();
+        var menu=new ContextMenuStrip { AccessibleName="Screen Reader Assist メニュー" };
+        menu.Items.Add("設定を開く",null,(_,_)=>OpenSettings());
+        menu.Items.Add(new ToolStripSeparator());
         foreach(var code in new[]{ReadingModes.Cursor,ReadingModes.Manga,ReadingModes.Selection,ReadingModes.Off}) {
             var selected=code;
             _modeMenu.DropDownItems.Add(ReadingModes.Label(code),null,(_,_)=>SetMode(selected));
@@ -55,16 +64,28 @@ public sealed class MainForm : Form
         menu.Items.Add("注目中のUI要素を読む",null,(_,_)=>ReadFocused());
         menu.Items.Add("日本語音声の性能を検証",null,async (_,_)=>await DiagnoseJapaneseVoice());
         menu.Items.Add("読み上げ停止",null,(_,_)=>_speech.Stop());
-        menu.Items.Add("設定を開く",null,(_,_)=>OpenSettings());
         menu.Items.Add("終了",null,(_,_)=>Quit());
         _tray.ContextMenuStrip=menu;
+        // Single left-click opens settings. Right-click displays the context menu.
+        _tray.MouseClick+=(_,e)=> { if(e.Button==MouseButtons.Left) OpenSettings(); };
         _tray.DoubleClick+=(_,_)=>OpenSettings();
         BuildForm();
         LoadControls();
         _cursorTimer.Tick+=CursorTimerTick;
         _pointerMovedAt=Environment.TickCount64;
         _cursorTimer.Start();
-        Shown+=(_,_)=>BeginInvoke(new Action(Hide));
+        // Deliberately start hidden instead of briefly flashing a settings window.
+        // The tray icon and cursor-reading timer remain active during normal use.
+    }
+    protected override void SetVisibleCore(bool value)
+    {
+        // Application.Run normally displays its main form. We keep its window handle
+        // and message loop alive without ever displaying the settings on startup.
+        if(value && !_settingsMayBeShown) {
+            if(!IsHandleCreated) CreateHandle(); // Enables global hotkeys while hidden.
+            value=false;
+        }
+        base.SetVisibleCore(value);
     }
     protected override void OnHandleCreated(EventArgs e)
     {
@@ -127,7 +148,7 @@ public sealed class MainForm : Form
         var io=new FlowLayoutPanel { AutoSize=true,WrapContents=true,Dock=DockStyle.Fill };
         AddButton(io,"設定を書き出す",Export);
         AddButton(io,"設定を取り込む",Import);
-        AddButton(io,"通知領域に戻る",Hide);
+        AddButton(io,"通知領域に戻る",HideSettings);
         AddButton(io,"終了",Quit);
         panel.Controls.Add(io,0,row);panel.SetColumnSpan(io,2);row++;
         panel.Controls.Add(_status,0,row);panel.SetColumnSpan(_status,2);row++;
@@ -417,7 +438,20 @@ public sealed class MainForm : Form
         }
     }
     private void Status(string text) { if(IsDisposed)return; if(InvokeRequired) {BeginInvoke(new Action(()=>Status(text)));return;} _status.Text=text; }
-    private void OpenSettings() {Show();WindowState=FormWindowState.Normal;Activate();}
+    private void HideSettings()
+    {
+        Hide();
+        _settingsMayBeShown=false;
+    }
+    private void OpenSettings()
+    {
+        _settingsMayBeShown=true;
+        if(WindowState==FormWindowState.Minimized) WindowState=FormWindowState.Normal;
+        Show();
+        WindowState=FormWindowState.Normal;
+        BringToFront();
+        Activate();
+    }
     private void Quit() {_quitting=true;Close();}
     protected override void Dispose(bool disposing)
     {
