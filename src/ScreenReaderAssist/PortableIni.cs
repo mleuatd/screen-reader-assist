@@ -3,13 +3,43 @@ using System.Text;
 
 namespace ScreenReaderAssist;
 
-/// <summary>
-/// Portable UTF-8 INI profile shared with the static website.
-/// Unknown sections and keys are ignored; known numeric values use invariant culture.
-/// </summary>
+/// <summary>UTF-8 INI file with user-facing Japanese section names and keys.
+/// Legacy English INI files remain readable for upgrades.</summary>
 public static class PortableIni
 {
     private static readonly CultureInfo Inv=CultureInfo.InvariantCulture;
+
+    private static string NormalizeNumber(string text)=>
+        text.Normalize(NormalizationForm.FormKC);
+
+    private static bool TryToggle(string text,out bool enabled)
+    {
+        switch(text.Trim().ToLowerInvariant())
+        {
+            case "はい":case "オン":case "有効":case "true":case "1":case "yes":
+                enabled=true;return true;
+            case "いいえ":case "オフ":case "無効":case "false":case "0":case "no":
+                enabled=false;return true;
+            default:enabled=false;return false;
+        }
+    }
+
+    private static string ParseMode(string value)=>value.Trim() switch
+    {
+        "カーソルで自動読み上げ" or "カーソル自動読み上げ" or "カーソル" => ReadingModes.Cursor,
+        "漫画の吹き出し" or "漫画" => ReadingModes.Manga,
+        "範囲選択のみ" or "範囲選択" => ReadingModes.Selection,
+        "自動読み上げ停止" or "停止" => ReadingModes.Off,
+        _ => ReadingModes.Normalize(value)
+    };
+    private static string WriteMode(string? value)=>ReadingModes.Normalize(value) switch
+    {
+        ReadingModes.Manga=>"漫画の吹き出し",
+        ReadingModes.Selection=>"範囲選択のみ",
+        ReadingModes.Off=>"自動読み上げ停止",
+        _=>"カーソルで自動読み上げ"
+    };
+
     public static AppSettings Parse(string ini)
     {
         if(ini.Length>100_000)throw new InvalidDataException("設定ファイルが大きすぎます。");
@@ -32,38 +62,50 @@ public static class PortableIni
                 val=val[1..^1].Replace("\"\"","\"");
             switch((section,key))
             {
+                case ("基本設定","設定形式のバージョン"):
                 case ("app","version"):
-                    if(int.TryParse(val,NumberStyles.Integer,Inv,out var version))config.version=version;
+                    if(int.TryParse(NormalizeNumber(val),NumberStyles.Integer,Inv,out var version))config.version=version;
                     break;
+                case ("音声読み上げ","読み上げ速度"):
                 case ("speech","rate"):
-                    if(int.TryParse(val,NumberStyles.Integer,Inv,out var rate))config.speech.rate=rate;
+                    if(int.TryParse(NormalizeNumber(val),NumberStyles.Integer,Inv,out var rate))config.speech.rate=rate;
                     break;
+                case ("音声読み上げ","音量"):
                 case ("speech","volume"):
-                    if(int.TryParse(val,NumberStyles.Integer,Inv,out var vol))config.speech.volume=vol;
+                    if(int.TryParse(NormalizeNumber(val),NumberStyles.Integer,Inv,out var vol))config.speech.volume=vol;
                     break;
-                case ("speech","voicename"):config.speech.voiceName=val;break;
+                case ("音声読み上げ","使用する音声名"):
+                case ("speech","voicename"):
+                    config.speech.voiceName=val;break;
+                case ("文字認識","認識した文字をコピー"):
                 case ("ocr","copytoclipboard"):
-                    if(bool.TryParse(val,out var copy))config.ocr.copyToClipboard=copy;
+                    if(TryToggle(val,out var copy))config.ocr.copyToClipboard=copy;
                     break;
+                case ("文字認識","前回の読み取り範囲を再利用"):
                 case ("ocr","reuselastregion"):
-                    if(bool.TryParse(val,out var reuse))config.ocr.reuseLastRegion=reuse;
+                    if(TryToggle(val,out var reuse))config.ocr.reuseLastRegion=reuse;
                     break;
+                case ("文字認識","日本語の文字認識を優先"):
                 case ("ocr","preferjapanese"):
-                    if(bool.TryParse(val,out var jp))config.ocr.preferJapanese=jp;
+                    if(TryToggle(val,out var jp))config.ocr.preferJapanese=jp;
                     break;
+                case ("画面拡大","拡大倍率"):
                 case ("magnifier","zoom"):
-                    if(float.TryParse(val,NumberStyles.Float,Inv,out var zoom))config.magnifier.zoom=zoom;
+                    if(float.TryParse(NormalizeNumber(val),NumberStyles.Float,Inv,out var zoom))config.magnifier.zoom=zoom;
                     break;
                 case ("magnifier","enabletripleclick"):
-                    // Deprecated. Normalize always disables the global click hook.
-                    if(bool.TryParse(val,out var triple))config.magnifier.enableTripleClick=triple;
+                    // Retired feature: AppSettings.Normalize always disables it.
                     break;
-                case ("reading","mode"):config.reading.mode=val;break;
+                case ("読み取り動作","読み取りモード"):
+                case ("reading","mode"):
+                    config.reading.mode=ParseMode(val);break;
+                case ("読み取り動作","カーソル停止時間（ミリ秒）"):
                 case ("reading","dwellmilliseconds"):
-                    if(int.TryParse(val,NumberStyles.Integer,Inv,out var ms))config.reading.dwellMilliseconds=ms;
+                    if(int.TryParse(NormalizeNumber(val),NumberStyles.Integer,Inv,out var ms))config.reading.dwellMilliseconds=ms;
                     break;
+                case ("読み取り動作","画像の文字も読み取る"):
                 case ("reading","ocrfallback"):
-                    if(bool.TryParse(val,out var fallback))config.reading.ocrFallback=fallback;
+                    if(TryToggle(val,out var fallback))config.reading.ocrFallback=fallback;
                     break;
             }
         }
@@ -73,32 +115,37 @@ public static class PortableIni
     public static string Write(AppSettings input)
     {
         var s=AppSettings.Normalize(input);
-        static string Bool(bool value)=>value?"true":"false";
+        static string Toggle(bool value)=>value?"はい":"いいえ";
         var safeVoice=(s.speech.voiceName??"").Replace("\r"," ").Replace("\n"," ").Replace("\"","\"\"");
         var sb=new StringBuilder();
-        sb.AppendLine("; Screen Reader Assist - portable settings (UTF-8)");
-        sb.AppendLine("; Place this file beside ScreenReaderAssist.exe. Edit with Notepad.");
-        sb.AppendLine("[app]");
-        sb.AppendLine("version=1");
+        sb.AppendLine("; Screen Reader Assist の設定ファイル（UTF-8）");
+        sb.AppendLine("; ScreenReaderAssist.exe と同じフォルダーに置いてください。");
+        sb.AppendLine("; メモ帳で変更した場合、アプリを再起動すると反映されます。");
+        sb.AppendLine("[基本設定]");
+        sb.AppendLine("設定形式のバージョン=1");
         sb.AppendLine();
-        sb.AppendLine("[reading]");
-        sb.AppendLine("; cursor / manga / selection / off");
-        sb.AppendLine("mode="+s.reading.mode);
-        sb.AppendLine("dwellMilliseconds="+s.reading.dwellMilliseconds.ToString(Inv));
-        sb.AppendLine("ocrFallback="+Bool(s.reading.ocrFallback));
+        sb.AppendLine("[読み取り動作]");
+        sb.AppendLine("; 選択肢：カーソルで自動読み上げ／漫画の吹き出し／範囲選択のみ／自動読み上げ停止");
+        sb.AppendLine("読み取りモード="+WriteMode(s.reading.mode));
+        sb.AppendLine("; カーソルを止めてから読み始めるまでの時間（400～2000ミリ秒）");
+        sb.AppendLine("カーソル停止時間（ミリ秒）="+s.reading.dwellMilliseconds.ToString(Inv));
+        sb.AppendLine("画像の文字も読み取る="+Toggle(s.reading.ocrFallback));
         sb.AppendLine();
-        sb.AppendLine("[speech]");
-        sb.AppendLine("rate="+s.speech.rate.ToString(Inv));
-        sb.AppendLine("volume="+s.speech.volume.ToString(Inv));
-        sb.AppendLine("voiceName=\""+safeVoice+"\"");
+        sb.AppendLine("[音声読み上げ]");
+        sb.AppendLine("; －10が最も遅く、0が標準、＋10が最も速い（21段階）");
+        sb.AppendLine("読み上げ速度="+s.speech.rate.ToString(Inv));
+        sb.AppendLine("; 0～100");
+        sb.AppendLine("音量="+s.speech.volume.ToString(Inv));
+        sb.AppendLine("; 空欄なら利用できる日本語音声を優先して選びます。");
+        sb.AppendLine("使用する音声名=\""+safeVoice+"\"");
         sb.AppendLine();
-        sb.AppendLine("[ocr]");
-        sb.AppendLine("copyToClipboard="+Bool(s.ocr.copyToClipboard));
-        sb.AppendLine("reuseLastRegion="+Bool(s.ocr.reuseLastRegion));
-        sb.AppendLine("preferJapanese="+Bool(s.ocr.preferJapanese));
+        sb.AppendLine("[文字認識]");
+        sb.AppendLine("認識した文字をコピー="+Toggle(s.ocr.copyToClipboard));
+        sb.AppendLine("前回の読み取り範囲を再利用="+Toggle(s.ocr.reuseLastRegion));
+        sb.AppendLine("日本語の文字認識を優先="+Toggle(s.ocr.preferJapanese));
         sb.AppendLine();
-        sb.AppendLine("[magnifier]");
-        sb.AppendLine("zoom="+s.magnifier.zoom.ToString(Inv));
+        sb.AppendLine("[画面拡大]");
+        sb.AppendLine("拡大倍率="+s.magnifier.zoom.ToString(Inv));
         return sb.ToString();
     }
 }
