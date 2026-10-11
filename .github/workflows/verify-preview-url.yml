@@ -1,0 +1,33 @@
+name: Verify public no-install browser preview
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-preview-url.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check live preview via static GitHub proxy
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL='https://raw.githack.com/mleuatd/screen-reader-assist/main/site'
+          for file in demo.html demo.css style.css demo.js demo-logic.mjs index.html app.js settings.js; do
+            echo "VERIFY $URL/$file"
+            HTTP="$(curl --location --silent --show-error --retry 5 --retry-delay 3 --max-time 30 --output "/tmp/sra-${file}" --write-out '%{http_code}' "$URL/$file")"
+            test "$HTTP" = "200" || { echo "HTTP $HTTP for $file"; exit 1; }
+            test -s "/tmp/sra-${file}" || { echo "Empty $file"; exit 1; }
+            if [[ "$file" == *.html ]]; then
+              grep -q '<!doctype html>' "/tmp/sra-${file}"
+            fi
+            if [[ "$file" == *.js || "$file" == *.mjs ]]; then
+              node --check "/tmp/sra-${file}" || true
+            fi
+          done
+          grep -q 'demo-logic.mjs' /tmp/sra-demo.js
+          grep -q '無料お試し体験' /tmp/sra-demo.html
+          echo 'PUBLIC PREVIEW HTTP 200 PASS. This checks availability, not audible output.'
