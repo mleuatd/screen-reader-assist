@@ -19,7 +19,7 @@ public sealed class MainForm : Form
     private readonly Label _status = new() { Text="準備完了", AutoSize=false, Width=540, Height=60, AccessibleName="現在の状態", AutoEllipsis=true };
     private readonly TextBox _last = new() { Multiline=true, ReadOnly=true, ScrollBars=ScrollBars.Vertical, Height=110, Dock=DockStyle.Fill, AccessibleName="最後に認識した文章" };
     private Rectangle? _lastRect;
-    private bool _busy,_quitting;
+    private bool _busy,_quitting,_diagnosingJapanese;
     private readonly SemaphoreSlim _hoverGate = new(1,1);
     private string _lastHoverSpoken="";
     private string _lastText="";
@@ -53,6 +53,7 @@ public sealed class MainForm : Form
         menu.Items.Add("範囲を読み上げ",null,async (_,_)=>await ReadSelection());
         menu.Items.Add("漫画の吹き出しを読む",null,async (_,_)=>await ReadBalloon());
         menu.Items.Add("注目中のUI要素を読む",null,(_,_)=>ReadFocused());
+        menu.Items.Add("日本語音声の性能を検証",null,async (_,_)=>await DiagnoseJapaneseVoice());
         menu.Items.Add("読み上げ停止",null,(_,_)=>_speech.Stop());
         menu.Items.Add("設定を開く",null,(_,_)=>OpenSettings());
         menu.Items.Add("終了",null,(_,_)=>Quit());
@@ -120,6 +121,7 @@ public sealed class MainForm : Form
         AddButton(buttons,"範囲読み上げ",()=>_=ReadSelection());
         AddButton(buttons,"漫画モード",()=>_=ReadBalloon());
         AddButton(buttons,"再読み上げ",()=>_speech.Speak(_lastText,_settings.speech));
+        AddButton(buttons,"日本語音声を診断",()=>_=DiagnoseJapaneseVoice());
         AddButton(buttons,"停止",()=>_speech.Stop());
         panel.Controls.Add(buttons,0,row); panel.SetColumnSpan(buttons,2);row++;
         var io=new FlowLayoutPanel { AutoSize=true,WrapContents=true,Dock=DockStyle.Fill };
@@ -364,6 +366,23 @@ public sealed class MainForm : Form
                 Status("カーソル位置を読み上げ中: "+text);
             } finally { _hoverGate.Release(); }
         } catch(Exception ex) { if(!form.IsDisposed && form.Visible) Status("カーソル読み取りエラー: "+ex.Message); }
+    }
+    private async Task DiagnoseJapaneseVoice()
+    {
+        if(_diagnosingJapanese) return;
+        _diagnosingJapanese=true;
+        try {
+            Status("インストール済み日本語音声を確認中…");
+            var result=await Task.Run(JapaneseSpeechDiagnostic.Run);
+            if(IsDisposed) return;
+            _last.Text=result.Report;
+            Status(result.HasJapaneseVoice
+                ? "日本語音声の速度測定が終了しました。診断結果を保存しました。"
+                : "このWindowsではSAPI対応の日本語音声が見つかりませんでした。診断結果を保存しました。");
+            // Don't automatically speak the report: diagnostics must be non-intrusive.
+        } catch(Exception ex) {
+            if(!IsDisposed) Status("日本語音声診断エラー: "+ex.Message);
+        } finally { _diagnosingJapanese=false; }
     }
     private void ReadFocused()
     {
