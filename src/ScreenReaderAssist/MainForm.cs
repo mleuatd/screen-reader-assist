@@ -23,6 +23,16 @@ public sealed class MainForm : Form
     private readonly SemaphoreSlim _hoverGate = new(1,1);
     private string _lastHoverSpoken="";
     private string _lastText="";
+    private readonly System.Windows.Forms.Timer _cursorTimer = new() { Interval=100 };
+    private readonly ComboBox _readingMode = new() { DropDownStyle=ComboBoxStyle.DropDownList, Width=340 };
+    private readonly NumericUpDown _hoverDelay = new() { Minimum=400,Maximum=2000,Increment=100,Width=100 };
+    private readonly CheckBox _ocrFallback = new() { Text="デジタル文字がなければ画像OCRも試す",AutoSize=true };
+    private Point _lastPointer=new(-100000,-100000);
+    private long _pointerMovedAt;
+    private bool _hoverBusy,_hoverAttempted,_loadingMode;
+    private int _cursorGeneration;
+    private string _lastAutoText="";
+    private readonly ToolStripMenuItem _modeMenu = new("読み上げモード");
 
     public MainForm()
     {
@@ -35,6 +45,11 @@ public sealed class MainForm : Form
         FormClosing+=(_,e)=>{ if(!_quitting) {e.Cancel=true;Hide();} };
         _tray=new NotifyIcon { Icon=SystemIcons.Information, Visible=true, Text="Screen Reader Assist" };
         var menu=new ContextMenuStrip();
+        foreach(var code in new[]{ReadingModes.Cursor,ReadingModes.Manga,ReadingModes.Selection,ReadingModes.Off}) {
+            var selected=code;
+            _modeMenu.DropDownItems.Add(ReadingModes.Label(code),null,(_,_)=>SetMode(selected));
+        }
+        menu.Items.Add(_modeMenu);
         menu.Items.Add("範囲を読み上げ",null,async (_,_)=>await ReadSelection());
         menu.Items.Add("漫画の吹き出しを読む",null,async (_,_)=>await ReadBalloon());
         menu.Items.Add("注目中のUI要素を読む",null,(_,_)=>ReadFocused());
@@ -45,6 +60,9 @@ public sealed class MainForm : Form
         _tray.DoubleClick+=(_,_)=>OpenSettings();
         BuildForm();
         LoadControls();
+        _cursorTimer.Tick+=CursorTimerTick;
+        _pointerMovedAt=Environment.TickCount64;
+        _cursorTimer.Start();
         Shown+=(_,_)=>BeginInvoke(new Action(Hide));
     }
     protected override void OnHandleCreated(EventArgs e)
@@ -79,14 +97,17 @@ public sealed class MainForm : Form
     }
     private void BuildForm()
     {
-        var panel=new TableLayoutPanel { Dock=DockStyle.Fill,Padding=new Padding(18),AutoScroll=true,ColumnCount=2,RowCount=13 };
+        var panel=new TableLayoutPanel { Dock=DockStyle.Fill,Padding=new Padding(18),AutoScroll=true,ColumnCount=2,RowCount=16 };
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,185));
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
-        for(int i=0;i<12;i++) panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        for(int i=0;i<15;i++) panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         panel.RowStyles.Add(new RowStyle(SizeType.Percent,100));
         Controls.Add(panel);
         int row=0;
         AddFull("Ctrl+Alt+R：範囲読み上げ（タッチ／ドラッグ）。Alt+Shift+M：漫画、U：UI、S：停止、P：一時停止、Z：拡大",row++);
+        Add("読み上げモード",_readingMode,row++);
+        Add("静止時間（ms）",_hoverDelay,row++);
+        Add("画像文字への対応",_ocrFallback,row++);
         Add("読み上げ速度 (-10～10)",_rate,row++);
         Add("読み上げ音量",_volume,row++);
         Add("読み上げ音声",_voice,row++);
@@ -126,6 +147,27 @@ public sealed class MainForm : Form
     }
     private void LoadControls()
     {
+        _loadingMode=true;
+        try {
+            if(_readingMode.Items.Count==0) {
+                _readingMode.Items.AddRange(new object[]{
+                    "カーソルで自動読み上げ（標準）",
+                    "漫画の吹き出しOCR（カーソル）",
+                    "範囲選択のみ",
+                    "自動読み上げ停止"
+                });
+                _readingMode.SelectedIndexChanged+=(_,_)=> {
+                    if(_loadingMode || _readingMode.SelectedIndex<0)return;
+                    var codes=new[]{ReadingModes.Cursor,ReadingModes.Manga,ReadingModes.Selection,ReadingModes.Off};
+                    SetMode(codes[_readingMode.SelectedIndex]);
+                };
+            }
+            var modes=new[]{ReadingModes.Cursor,ReadingModes.Manga,ReadingModes.Selection,ReadingModes.Off};
+            _readingMode.SelectedIndex=Array.IndexOf(modes,_settings.reading.mode);
+            _hoverDelay.Value=_settings.reading.dwellMilliseconds;
+            _ocrFallback.Checked=_settings.reading.ocrFallback;
+            UpdateModeMenu();
+        } finally { _loadingMode=false; }
         _rate.Value=_settings.speech.rate;
         _volume.Value=_settings.speech.volume;
         _zoom.Value=(decimal)_settings.magnifier.zoom*10;
@@ -140,6 +182,8 @@ public sealed class MainForm : Form
     private void SaveControls()
     {
         try {
+            _settings.reading.dwellMilliseconds=(int)_hoverDelay.Value;
+            _settings.reading.ocrFallback=_ocrFallback.Checked;
             _settings.speech.rate=(int)_rate.Value;
             _settings.speech.volume=(int)_volume.Value;
             _settings.speech.voiceName=_voice.SelectedIndex<=0?"":_voice.SelectedItem?.ToString()??"";
@@ -150,6 +194,78 @@ public sealed class MainForm : Form
             _settings.Save();Status("設定を保存しました。");
         } catch(Exception ex) { Status("設定保存エラー: "+ex.Message); }
     }
+    private void UpdateModeMenu()
+    {
+        foreach(ToolStripMenuItem item in _modeMenu.DropDownItems)
+            item.Checked=item.Text==ReadingModes.Label(_settings.reading.mode);
+        _tray.Text="読み上げ："+ReadingModes.Label(_settings.reading.mode);
+    }
+    private void SetMode(string mode)
+    {
+        _settings.reading.mode=ReadingModes.Normalize(mode);
+        _cursorGeneration++;
+        _hoverAttempted=false;
+        _lastPointer=new(-100000,-100000);
+        _lastAutoText="";
+        int index=Array.IndexOf(new[]{ReadingModes.Cursor,ReadingModes.Manga,ReadingModes.Selection,ReadingModes.Off},_settings.reading.mode);
+        _loadingMode=true;
+        try { if(_readingMode.SelectedIndex!=index) _readingMode.SelectedIndex=index; }
+        finally { _loadingMode=false; }
+        UpdateModeMenu();
+        try { _settings.Save(); Status("読み上げモード："+ReadingModes.Label(mode)); }
+        catch(Exception ex) { Status("モード設定の保存に失敗: "+ex.Message); }
+    }
+    private void CursorTimerTick(object? sender,EventArgs e)
+    {
+        if(_busy || Visible || !ReadingModes.IsAuto(_settings.reading.mode)) return;
+        var point=Cursor.Position;
+        var now=Environment.TickCount64;
+        if(Math.Abs(point.X-_lastPointer.X)>10 || Math.Abs(point.Y-_lastPointer.Y)>10) {
+            _lastPointer=point;
+            _pointerMovedAt=now;
+            _hoverAttempted=false;
+            _cursorGeneration++;
+            return;
+        }
+        if(_hoverBusy || _hoverAttempted || now-_pointerMovedAt<_settings.reading.dwellMilliseconds) return;
+        _hoverAttempted=true;
+        _=ReadCursorAsync(point,_cursorGeneration,_settings.reading.mode);
+    }
+    private async Task ReadCursorAsync(Point point,int generation,string mode)
+    {
+        if(_hoverBusy)return;
+        _hoverBusy=true;
+        try {
+            string value="";
+            if(mode==ReadingModes.Cursor) value=UiAutomationReader.ReadAtPoint(point);
+            if(string.IsNullOrWhiteSpace(value) &&
+                (mode==ReadingModes.Manga || _settings.reading.ocrFallback)) {
+                var desktop=ScreenCapture.VirtualBounds;
+                var rect=SelectionGeometry.AroundTap(point,desktop,
+                    mode==ReadingModes.Manga?650:520,mode==ReadingModes.Manga?490:220);
+                using var image=ScreenCapture.Capture(rect);
+                if(mode==ReadingModes.Manga) {
+                    var local=new Point(point.X-rect.X,point.Y-rect.Y);
+                    var estimate=BalloonDetector.Estimate(image,local);
+                    using var bubble=image.Clone(estimate,image.PixelFormat);
+                    value=await _ocr.RecognizeAsync(bubble,_settings.ocr.preferJapanese);
+                } else value=await _ocr.RecognizeNearPointAsync(image,
+                    new Point(point.X-rect.X,point.Y-rect.Y),_settings.ocr.preferJapanese);
+            }
+            var current=Cursor.Position;
+            if(IsDisposed || _busy || generation!=_cursorGeneration ||
+                Math.Abs(current.X-point.X)>10 || Math.Abs(current.Y-point.Y)>10 ||
+                mode!=_settings.reading.mode || !ReadingModes.IsAuto(mode) || Visible) return;
+            value=value.Trim();
+            if(value.Length==0 || value==_lastAutoText) return;
+            _lastAutoText=value;
+            _lastText=value;
+            _last.Text=value;
+            _speech.Speak(value,_settings.speech);
+            Status("カーソルの文字を読み上げ: "+value);
+        } catch(Exception ex) { if(!IsDisposed) Status("カーソル読み取りエラー: "+ex.Message); }
+        finally { _hoverBusy=false; }
+    }
     private void ToggleZoom()
     {
         if(_magnifier.Active) _magnifier.Restore();
@@ -159,6 +275,7 @@ public sealed class MainForm : Form
     {
         if(_busy)return;
         _busy=true;
+        _cursorGeneration++;
         try {
             Hide();
             // Let Windows restore the previous application before capturing it.
@@ -263,7 +380,7 @@ public sealed class MainForm : Form
     private void Quit() {_quitting=true;Close();}
     protected override void Dispose(bool disposing)
     {
-        if(disposing){_hoverGate.Dispose();_magnifier.Dispose();_speech.Dispose();_tray.Visible=false;_tray.Dispose();}
+        if(disposing){_cursorTimer.Stop();_cursorTimer.Dispose();_hoverGate.Dispose();_magnifier.Dispose();_speech.Dispose();_tray.Visible=false;_tray.Dispose();}
         base.Dispose(disposing);
     }
 }
