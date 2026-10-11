@@ -421,9 +421,15 @@ public sealed class MainForm : Form
     }
     private async Task ReadSelection()
     {
-        if(_busy)return;
+        if(_busy) {
+            DiagnosticLog.Info("範囲読み取り","別の読み取り処理中のためショートカットを受け付けませんでした。");
+            return;
+        }
         _busy=true;
         _cursorGeneration++;
+        bool finishSoundPlayed=false;
+        // Audible confirmation is deliberately before the overlay and OCR work.
+        SelectionCues.PlayStart();
         DiagnosticLog.Info("範囲読み取り","Ctrl+Alt+Rまたはメニューで範囲読み取りを開始しました。");
         try {
             HideSettings();
@@ -433,7 +439,16 @@ public sealed class MainForm : Form
             DiagnosticLog.Info("範囲読み取り","選択オーバーレイを表示します。クリック・ドラッグ・Enterで決定、Escで取消。");
             _lastHoverSpoken="";
             sel.HoverRequested+=(point,version)=>_ = ReadHoverAsync(sel,point,version);
-            if(sel.ShowDialog()!=DialogResult.OK || sel.ChosenScreenBounds is null) {
+            DialogResult result;
+            try {
+                result=sel.ShowDialog();
+            } finally {
+                // The overlay has ended: play the distinct closing cue immediately,
+                // BEFORE potentially slow OCR or subsequent speech playback.
+                SelectionCues.PlayEnd();
+                finishSoundPlayed=true;
+            }
+            if(result!=DialogResult.OK || sel.ChosenScreenBounds is null) {
                 DiagnosticLog.Info("範囲読み取り","選択をキャンセルしました。");
                 return;
             }
@@ -443,7 +458,15 @@ public sealed class MainForm : Form
             Point? focus=sel.ChosenTapScreenPoint is Point tap
                 ? new Point(tap.X-_lastRect.Value.X,tap.Y-_lastRect.Value.Y) : null;
             await ReadBitmap(sel.CopyChosenBitmap(),focus);
-        } catch(Exception ex) {DiagnosticLog.Error("範囲読み取り",ex);Status("読み取りエラー: "+ex.Message);} finally {_busy=false;DiagnosticLog.Info("範囲読み取り","処理を終了しました。");}
+        } catch(Exception ex) {
+            DiagnosticLog.Error("範囲読み取り",ex);
+            Status("読み取りエラー: "+ex.Message);
+        } finally {
+            // Also confirm termination when capture/overlay creation fails.
+            if(!finishSoundPlayed) SelectionCues.PlayEnd();
+            _busy=false;
+            DiagnosticLog.Info("範囲読み取り","処理を終了しました。");
+        }
     }
     private async Task ReadBalloon()
     {

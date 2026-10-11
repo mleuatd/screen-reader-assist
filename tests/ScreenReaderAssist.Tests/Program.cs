@@ -129,4 +129,15 @@ Check(File.Exists(DiagnosticLog.FilePath),"diagnostic log file is created locall
 Check(diagnosticEvents==1 && DiagnosticLog.Snapshot().Contains("[テスト]"),
     "diagnostics stream updates live status listeners");
 Check(!string.IsNullOrEmpty(DiagnosticLog.Snapshot()),"diagnostic snapshot is available");
+Check(SelectionCues.StartWaveData.Length>44 && SelectionCues.EndWaveData.Length>44,
+    "selection start and end confirmation cues contain WAV audio data");
+Check(!SelectionCues.StartWaveData.Span.SequenceEqual(SelectionCues.EndWaveData.Span),
+    "selection start and end tones have different waveforms");
+var cueWave=SelectionCues.StartWaveData.ToArray();
+Check(System.Text.Encoding.ASCII.GetString(cueWave,0,4)=="RIFF" &&
+      System.Text.Encoding.ASCII.GetString(cueWave,8,4)=="WAVE" &&
+      BitConverter.ToInt32(cueWave,24)==22050,
+    "selection cue has a valid RIFF WAV header and 22050 Hz sample rate");
+Check(cueWave.Length<15000,
+    "selection cue is short and does not require loading an audio file");
 Console.WriteLine("Finished all logic smoke tests. OCR and live GUI tests NOT executed by this test suite.");
