@@ -6,3 +6,8 @@
 5. Windows実機でsettings.iniのUTF-8・日本語音声名・起動読込・設定保存・再起動反映を確認。
 6. Webが公式GitHub ZIPを直接取得できない場合は公式ZIPを手動ダウンロードし、ドラッグ＆ドロップしてから設定済みZIPを作成する。
 7. 公式GitHub Pagesの初期有効化は未完了。ブラウザ体験版と設定ページはraw.githack.com経由。
+
+## v0.6.1 設定ファイルの日本語化
+- Windows CIとWeb Nodeテストの結果を確認する。失敗した場合は修正する。
+- `v0.6.1-preview.1` を公開し、更新されたEXEと日本語INIを同梱したZIPを検証する。
+- 現行EXEが起動時にINIを読み設定保存できることはWindows実機で別途検証が必要。旧EXEに新INIをコピーしないこと。

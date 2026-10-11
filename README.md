@@ -1,11 +1,11 @@
-# Screen Reader Assist — Windows 11 視覚障害支援アプリ（試作 v0.6）
+# Screen Reader Assist — Windows 11 視覚障害支援アプリ（試作 v0.6.1）
 
 **[インストール不要でブラウザ体験（スマホ・PC）](https://raw.githack.com/mleuatd/screen-reader-assist/main/site/demo.html)** | [Web設定画面（GitHub経由）](https://raw.githack.com/mleuatd/screen-reader-assist/main/site/index.html)
 
 
 画面の任意範囲からWindowsの日本語OCRで文字を取り出し、インストール済みの音声合成エンジンで読み上げる、常駐型オープンソースアプリの**試作ソースコード**です。
 
-> **検証状況（2026-10-11）:** GitHub Actions のWindowsビルド・ロジックテストとWeb設定テストが成功。`win-x64` の配布アーティファクト生成を確認済み。v0.5のWindowsビルドと43件のロジックテストに成功。Windows GUIでの操作、ゲーム・漫画OCR・タッチ入力などの実機検証は未実施。GitHub Releases 最新プレビュー v0.6.0-preview.1 を公開済み。GitHub Pagesは初期有効化待ちですが、無料のGitHubファイル表示サービスで公開体験版を利用可能。試作版につき未検証機能に注意。
+> **検証状況（2026-10-11）:** GitHub Actions のWindowsビルド・ロジックテストとWeb設定テストが成功。`win-x64` の配布アーティファクト生成を確認済み。v0.5のWindowsビルドと43件のロジックテストに成功。Windows GUIでの操作、ゲーム・漫画OCR・タッチ入力などの実機検証は未実施。GitHub Releases 最新プレビュー v0.6.1-preview.1 を公開済み。GitHub Pagesは初期有効化待ちですが、無料のGitHubファイル表示サービスで公開体験版を利用可能。試作版につき未検証機能に注意。
 
 ## 主な機能（実装済みコード／動作未検証）
 
@@ -49,7 +49,7 @@ dotnet publish src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release -r wi
 
 ## 設定Webサイト
 
-`site/index.html`を静的配信することで使用可能です。データはブラウザ上で生成され外部送信されません。Webサイトで「設定JSONをダウンロード」し、アプリの「設定を取り込む」から読み込みます。Webサイトからアプリへ自動反映する方式は**未実装**です。
+`site/index.html`を静的配信することで使用可能です。データはブラウザ上で生成され外部送信されません。Webサイトでは日本語の設定INIを保存するか、設定入りWindows用ZIPを生成できます。旧英語INI・旧JSONもWebから取り込めます。ブラウザから実行中のアプリへ直接変更を反映する方式は**未実装**です。
 
 音声速度は`rate: -10〜10`（System.Speech API）であり、倍率ではありません。設定形式の詳細は [`REQUIREMENTS.md`](REQUIREMENTS.md)。
 
@@ -76,7 +76,7 @@ dotnet publish src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release -r wi
 
 ## 試験版を入手する
 
-- [Windows 11 x64向け試験版 ZIP (v0.6.0-preview.1)](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.6.0-preview.1/ScreenReaderAssist-win-x64.zip)
+- [Windows 11 x64向け試験版 ZIP (v0.6.1-preview.1)](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.6.1-preview.1/ScreenReaderAssist-win-x64.zip)
 - **注意**: 実機GUI検証は未実施。初回起動時のSmartScreen警告の可能性あり。Windows標準のOCR言語と読み上げ音声が必要です。
 
 ## ブラウザ体験版（アプリのインストール不要）
@@ -114,7 +114,7 @@ dotnet publish src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release -r wi
 - ドラッグして離すと囲んだ座標をOCR。短いタップの場合は周辺（最大360×160ピクセル）をOCR。Escで中止。
 - 選択中は通常アプリにクリック操作が伝わらないことを意図した構造ですが、UACセキュアデスクトップ、排他的フルスクリーン、他のTopMostウィンドウ等の特例があります。実機での入力非干渉テストは未完了。
 - 以前の設定ファイルの`magnifier.enableTripleClick:true`は読み込み時に無効化。グローバル3連クリックフックは使用しません。
-- 対応バージョンは次のプレビューリリース以降です。旧`v0.6.0-preview.1`はホットキーが違います。
+- 対応バージョンは次のプレビューリリース以降です。旧`v0.6.1-preview.1`はホットキーが違います。
 
 ## v0.3 カーソルを止めて読み上げ（試作）
 
@@ -178,3 +178,14 @@ Windows UI Automationを優先し、取得できない場合はWindows標準のM
 
 ## Webの音声速度スライダー
 Web設定画面は速度のスライダーを大きく表示し、遅い（-10）・標準（0）・速い（+10）を明記。21段階で`settings.ini`の`[speech] rate`に書き出します。矢印キーやタッチ操作でも変更可能。標準に戻すボタンと現在値表示があります。SAPIのrateは音声合成エンジン固有の段階値であり、単純な1.5倍速等には対応しません。
+
+## v0.6.1 日本語で編集できるINI
+
+`settings.ini`はすべてのセクション名・項目名が日本語になりました。
+- `[基本設定]`：`設定形式のバージョン=1`
+- `[読み取り動作]`：`読み取りモード=カーソルで自動読み上げ`、`カーソル停止時間（ミリ秒）=750`、`画像の文字も読み取る=はい`
+- `[音声読み上げ]`：`読み上げ速度=0`、`音量=100`、`使用する音声名=""`
+- `[文字認識]`：`認識した文字をコピー=いいえ`、`前回の読み取り範囲を再利用=いいえ`、`日本語の文字認識を優先=はい`
+- `[画面拡大]`：`拡大倍率=2`
+
+メモ帳から編集できます。値は日本語の`はい／いいえ`や`オン／オフ`、数字には全角数字（例：`８０`）も利用できます。区切り記号の `[ ]` と `=` は半角のままにしてください。英語名の旧INIを読み込むことも可能で、書き出し時に日本語形式へ変換します。**日本語のINIファイルは新バージョンのEXEと組にして使用**してください。旧EXEは日本語キーを認識しません。
