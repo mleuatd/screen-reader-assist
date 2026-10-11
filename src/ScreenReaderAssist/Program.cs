@@ -2,9 +2,21 @@ namespace ScreenReaderAssist;
 internal static class Program
 {
     [STAThread]
-    private static void Main()
+    private static void Main(string[] args)
     {
         DiagnosticLog.Info("起動","プロセス開始。実行フォルダーからログ記録を開始します。");
+        // Repair before the single-instance mutex and before constructing MainForm:
+        // even a terminated/obsolete process can leave the fullscreen transform behind.
+        bool explicitRepair=args.Any(x=>string.Equals(x,"--reset-display",StringComparison.OrdinalIgnoreCase));
+        var recovery=explicitRepair?MagnificationRecovery.ExplicitReset():MagnificationRecovery.OnStartup();
+        DiagnosticLog.Info("画面復旧",$"状態={recovery.Status}。{recovery.Detail}");
+        if(explicitRepair)
+        {
+            ApplicationConfiguration.Initialize();
+            MessageBox.Show(recovery.Successful?"画面表示の初期化を確認しました。":$"画面表示を初期化できませんでした。{recovery.Detail}",
+                "画面表示の復旧");
+            return;
+        }
         Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
         Application.ThreadException+=(_,e)=>DiagnosticLog.Error("UIスレッド例外",e.Exception);
         AppDomain.CurrentDomain.UnhandledException+=(_,e)=>

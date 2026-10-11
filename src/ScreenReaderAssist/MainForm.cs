@@ -7,13 +7,13 @@ public sealed class MainForm : Form
     private AppSettings _settings;
     private readonly SpeechService _speech = new();
     private readonly OcrService _ocr = new();
-    private readonly MagnificationService _magnifier = new();
+    // Fullscreen magnification disabled: forcibly killing an app leaves the desktop transformed.
     private readonly NotifyIcon _tray;
     private readonly NumericUpDown _rate = new() { Minimum=-10, Maximum=10, Width=80 };
     private readonly NumericUpDown _volume = new() { Minimum=0, Maximum=100, Width=80 };
-    private readonly NumericUpDown _zoom = new() { Minimum=15, Maximum=60, Increment=5, Width=80 };
+    private readonly NumericUpDown _zoom = new() { Minimum=15, Maximum=60, Increment=5, Width=80, Enabled=false };
     private readonly ComboBox _voice = new() { DropDownStyle=ComboBoxStyle.DropDownList, Width=330 };
-    private readonly CheckBox _triple = new() { Text="3回クリック拡大は無効（競合防止）。拡大は Alt+Shift+Z", AutoSize=true, Enabled=false };
+    private readonly CheckBox _triple = new() { Text="危険な全画面拡大は一時停止中。Alt+Shift+Zは画面の復旧用", AutoSize=true, Enabled=false };
     private readonly CheckBox _copy = new() { Text="認識した文字をクリップボードへコピー", AutoSize=true };
     private readonly CheckBox _japanese = new() { Text="日本語OCRを優先", AutoSize=true };
     private readonly Label _status = new() { Text="準備完了", AutoSize=false, Width=540, Height=60, AccessibleName="現在の状態", AutoEllipsis=true };
@@ -80,6 +80,7 @@ public sealed class MainForm : Form
         menu.Items.Add("注目中のUI要素を読む",null,(_,_)=>ReadFocused());
         menu.Items.Add("日本語音声の性能を検証",null,async (_,_)=>await DiagnoseJapaneseVoice());
         menu.Items.Add("動作ログを表示",null,(_,_)=>OpenDiagnosticLog());
+        menu.Items.Add("画面の拡大表示を解除（復旧）",null,(_,_)=>ResetDisplayFromUser());
         menu.Items.Add("音声テスト",null,(_,_)=>{
             try {DiagnosticLog.Info("音声テスト","通知領域から直接音声を試験します。");_speech.Speak("これは読み上げ音声のテストです。",_settings.speech);}
             catch(Exception ex){DiagnosticLog.Error("音声テスト",ex);}
@@ -165,7 +166,7 @@ public sealed class MainForm : Form
         Controls.Add(panel);
         int row=0;
         AddFull("通知領域で常駐します。設定画面の×を押しても自動読み上げは続きます。再表示：通知領域アイコンを左クリック、または右クリック→「設定を開く」。",row++);
-        AddFull("Ctrl+Alt+R：範囲読み上げ（タッチ／ドラッグ）。Alt+Shift+M：漫画、U：UI、S：停止、P：一時停止、Z：拡大",row++);
+        AddFull("Ctrl+Alt+R：範囲読み上げ。Alt+Shift+M：漫画、U：UI、S：停止、P：一時停止、Z：画面表示の復旧。危険な全画面拡大機能は停止中です。",row++);
         panel.Controls.Add(_health,0,row);
         panel.SetColumnSpan(_health,2);
         row++;
@@ -175,7 +176,7 @@ public sealed class MainForm : Form
         Add("読み上げ速度 (-10～10)",_rate,row++);
         Add("読み上げ音量",_volume,row++);
         Add("読み上げ音声",_voice,row++);
-        Add("拡大倍率 (×0.1)",_zoom,row++);
+        Add("拡大倍率（現在は無効）",_zoom,row++);
         Add("設定",_triple,row++);
         Add("OCR",_japanese,row++);
         Add("OCR",_copy,row++);
@@ -199,6 +200,7 @@ public sealed class MainForm : Form
         AddButton(io,"設定を取り込む",Import);
         AddButton(io,"通知領域に戻る",HideSettings);
         AddButton(io,"動作ログを開く",OpenDiagnosticLog);
+        AddButton(io,"画面表示を初期状態に戻す",ResetDisplayFromUser);
         AddButton(io,"ログをコピー",()=> {
             try {Clipboard.SetText(DiagnosticLog.Snapshot());Status("診断ログの最近の内容をコピーしました。");}
             catch(Exception ex){DiagnosticLog.Error("ログコピー",ex);Status("ログのコピーに失敗しました。");}
@@ -414,10 +416,14 @@ public sealed class MainForm : Form
         } catch(Exception ex) {DiagnosticLog.Error("カーソル読み取り",ex);if(!IsDisposed) Status("カーソル読み取りエラー: "+ex.Message); }
         finally { _hoverBusy=false; }
     }
-    private void ToggleZoom()
+    private void ToggleZoom() => ResetDisplayFromUser();
+
+    private void ResetDisplayFromUser()
     {
-        if(_magnifier.Active) _magnifier.Restore();
-        else if(!_magnifier.Start(Cursor.Position,_settings.magnifier.zoom)) Status("拡大を開始できません。Windowsの拡大鏡との競合等を確認してください。");
+        DiagnosticLog.Info("画面復旧","ユーザーから画面復旧を要求しました。");
+        var result=MagnificationRecovery.ExplicitReset();
+        DiagnosticLog.Info("画面復旧",$"状態={result.Status}。{result.Detail}");
+        Status(result.Successful?"画面表示を標準に戻しました。":"画面表示の復旧に失敗しました。動作ログをご確認ください。");
     }
     private async Task ReadSelection()
     {
@@ -618,7 +624,7 @@ public sealed class MainForm : Form
     private void Quit() {DiagnosticLog.Info("終了","通知領域などから終了しました。");_quitting=true;Close();}
     protected override void Dispose(bool disposing)
     {
-        if(disposing){DiagnosticLog.EntryAdded-=OnLogEntryAdded;_healthTimer.Stop();_healthTimer.Dispose();_cursorTimer.Stop();_cursorTimer.Dispose();_hoverGate.Dispose();_magnifier.Dispose();_speech.Dispose();_tray.Visible=false;_tray.Dispose();}
+        if(disposing){DiagnosticLog.EntryAdded-=OnLogEntryAdded;_healthTimer.Stop();_healthTimer.Dispose();_cursorTimer.Stop();_cursorTimer.Dispose();_hoverGate.Dispose();_speech.Dispose();_tray.Visible=false;_tray.Dispose();}
         base.Dispose(disposing);
     }
 }
