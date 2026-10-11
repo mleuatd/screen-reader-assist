@@ -21,6 +21,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet run --project tests/ScreenReaderAssist.Tests/ScreenReaderAssist.Tests.csproj -c Release
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Measure native offline speech synthesis speed (optional)
+        shell: pwsh
+        continue-on-error: true
+        timeout-minutes: 2
+        run: |
+          dotnet run --project tests/ScreenReaderAssist.Tests/ScreenReaderAssist.Tests.csproj -c Release --no-build -- --benchmark-tts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Create portable Windows archive
         shell: pwsh
         run: |
@@ -38,4 +45,4 @@ jobs:
           無署名アプリのためWindows SmartScreenが警告を表示する可能性があります。初めての実行は未保存のデータや重要な操作がない状態で行ってください。
           標準はカーソル静止でUIAからデジタル文字を読み、取得不可ならOCR補完。通常OCRが失敗した場合、文字らしい矩形を自動検出し拡大・明暗補正して最大2候補をOCR再試行。漫画OCR、範囲選択、停止の4モードを設定画面・通知領域で切替。Ctrl+Alt+Rで最前面の読み上げ選択モードを起動。カーソルを約1秒止めると近傍の文字行をOCRして自動読み上げ。マウス/タッチのドラッグで範囲選択、1回タップで周辺をOCRします。グローバル3回クリック拡大は廃止しました。選択モードのタッチ操作は実機未検証です。使用条件・既知の問題はREADMEとISSUES.mdを参照してください。
           '@ | Set-Content -Encoding utf8 preview-notes.md
-          gh release create "v0.4.1-preview.1" "ScreenReaderAssist-win-x64.zip" --prerelease --title "Screen Reader Assist v0.4.1-preview.1 (experimental)" --notes-file preview-notes.md
+          gh release create "v0.5.0-preview.1" "ScreenReaderAssist-win-x64.zip" --prerelease --title "Screen Reader Assist v0.5.0-preview.1 (experimental)" --notes-file preview-notes.md

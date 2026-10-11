@@ -1,11 +1,11 @@
-# Screen Reader Assist — Windows 11 視覚障害支援アプリ（試作 v0.4）
+# Screen Reader Assist — Windows 11 視覚障害支援アプリ（試作 v0.5）
 
 **[インストール不要でブラウザ体験（スマホ・PC）](https://raw.githack.com/mleuatd/screen-reader-assist/main/site/demo.html)** | [Web設定画面（GitHub経由）](https://raw.githack.com/mleuatd/screen-reader-assist/main/site/index.html)
 
 
 画面の任意範囲からWindowsの日本語OCRで文字を取り出し、インストール済みの音声合成エンジンで読み上げる、常駐型オープンソースアプリの**試作ソースコード**です。
 
-> **検証状況（2026-10-11）:** GitHub Actions のWindowsビルド・ロジックテストとWeb設定テストが成功。`win-x64` の配布アーティファクト生成を確認済み。v0.4.1のWindowsビルドと26件のロジックテストに成功。Windows GUIでの操作、ゲーム・漫画OCR・タッチ入力などの実機検証は未実施。GitHub Releases 最新プレビュー v0.4.1-preview.1 を公開済み。GitHub Pagesは初期有効化待ちですが、無料のGitHubファイル表示サービスで公開体験版を利用可能。試作版につき未検証機能に注意。
+> **検証状況（2026-10-11）:** GitHub Actions のWindowsビルド・ロジックテストとWeb設定テストが成功。`win-x64` の配布アーティファクト生成を確認済み。v0.4.1のWindowsビルドと26件のロジックテストに成功。Windows GUIでの操作、ゲーム・漫画OCR・タッチ入力などの実機検証は未実施。GitHub Releases 最新プレビュー v0.5.0-preview.1 を公開済み。GitHub Pagesは初期有効化待ちですが、無料のGitHubファイル表示サービスで公開体験版を利用可能。試作版につき未検証機能に注意。
 
 ## 主な機能（実装済みコード／動作未検証）
 
@@ -76,7 +76,7 @@ dotnet publish src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release -r wi
 
 ## 試験版を入手する
 
-- [Windows 11 x64向け試験版 ZIP (v0.4.1-preview.1)](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.4.1-preview.1/ScreenReaderAssist-win-x64.zip)
+- [Windows 11 x64向け試験版 ZIP (v0.5.0-preview.1)](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.5.0-preview.1/ScreenReaderAssist-win-x64.zip)
 - **注意**: 実機GUI検証は未実施。初回起動時のSmartScreen警告の可能性あり。Windows標準のOCR言語と読み上げ音声が必要です。
 
 ## ブラウザ体験版（アプリのインストール不要）
@@ -114,7 +114,7 @@ dotnet publish src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release -r wi
 - ドラッグして離すと囲んだ座標をOCR。短いタップの場合は周辺（最大360×160ピクセル）をOCR。Escで中止。
 - 選択中は通常アプリにクリック操作が伝わらないことを意図した構造ですが、UACセキュアデスクトップ、排他的フルスクリーン、他のTopMostウィンドウ等の特例があります。実機での入力非干渉テストは未完了。
 - 以前の設定ファイルの`magnifier.enableTripleClick:true`は読み込み時に無効化。グローバル3連クリックフックは使用しません。
-- 対応バージョンは次のプレビューリリース以降です。旧`v0.4.1-preview.1`はホットキーが違います。
+- 対応バージョンは次のプレビューリリース以降です。旧`v0.5.0-preview.1`はホットキーが違います。
 
 ## v0.3 カーソルを止めて読み上げ（試作）
 
@@ -146,3 +146,13 @@ Windows UI Automationを優先し、取得できない場合はWindows標準のM
 - 認識文字が得られた場合に限って発声。OCRの結果がない画像から架空の文字列を推測して読み上げる機能ではない。
 - 通常の自動カーソルモード、漫画モード、手動で選択した領域の読み上げで利用可能。画像OCR補完をオフにすればデジタル文字読み上げのみになる。
 - 文字の境界を画像処理で推定する軽量な実験アルゴリズムであり、学習済みモデルによる高精度な吹き出し・文脈認識ではない。実際の漫画の縦書きや極小の文字、低解像度テキストの精度は未検証。
+
+## v0.5 認識済みテキストから音声へ：処理最適化
+
+- `SpeechService` のSAPIエンジンは1回だけ作成。音声一覧を起動時に1回取得してキャッシュ。
+- 同じ声・音量・話速が続く限り、`SelectVoice`、`Rate`、`Volume` の再設定をしない。声や設定を変えた場合だけ再設定する。
+- `SpeakAsync`を利用し、音声合成・再生はSAPIの非同期処理に渡す。新しい文章が来たら古い再生を取り消す（前回と同じ動作）。無効な音声名はインストール済みの日本語音声等へフォールバック。
+- 自動試験では偽音声エンジンに1万件渡した際の設定変更回数と処理時間を測定。これは音声生成時間ではない。
+- Windowsランナーで利用可能なら、実際のSAPI音声をWAVデータに合成し、発声時間を含まない処理時間・文字数/秒を計測する。
+- 音声の「合成計算時間」と「発声している秒数」は別。話速の変更は主に後者。CPU、Windows音声エンジン、音声言語によって計測結果は変わる。
+- 本機能は日本語音声エンジンの変更やオンライン音声生成を行わない。視覚障害者向けの既存のローカル処理を維持。
