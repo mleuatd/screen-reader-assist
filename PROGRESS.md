@@ -41,4 +41,4 @@
 - [x] ドラム本体のソースコード・挙動は未変更。
 - [x] GitHub Pages上の独立URL：https://mleuatd.github.io/dtx-drum-flow/screen-reader-assist/demo.html
 - [ ] 新規の試用版更新時にPagesミラーを同期する仕組みは未実装。
-- [ ] 公開実URLのHTTP 200を確認する検証ワークフローを新設、実行結果を確認する。
+- [x] GitHub Pages公開が成功（ドラム側Actions `38119463235`）。独立した公開URL上のHTML・CSS・JavaScriptなど8ファイルをHTTP 200で確認（検証Actions `38119529084` 合格）。
