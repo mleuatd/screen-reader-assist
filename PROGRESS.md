@@ -144,3 +144,9 @@
 - [x] EXE/INIの同一publishフォルダーへの配置を確認するWindows CIステップ成功。
 - [x] v0.6.0-preview.1をGitHub Releasesへ公開。Actions `38153717250` 成功（ZIP 74,582,881バイト）。
 - [ ] 利用者の実PCでINI保存とZIP再編集画面の動作を実機検証する。
+
+### Web音声速度スライダー（2026-10-12）
+- [x] 速度設定（Windows SAPI -10～+10、標準0）を横長の大きなスライダーで操作できるUIへ改善。
+- [x] 遅い／標準／速いの目盛り、現在値表示、標準に戻す、スクリーンリーダー向け値説明を追加。
+- [x] settings.ini [speech] rate の出力・既存INI読込・設定済みZIP出力に同じ値を維持。
+- [x] Web CI Actions `38154819045` 29件合格。Windows CI Actions `38154818987` 成功。

@@ -132,3 +132,8 @@ Windows向け自動テストは`tests/ScreenReaderAssist.Tests/`に存在する�
 - Web CI `38153717226`: **成功**、26件PASS・0件FAIL。テストでは合成ZIPからアプリのEXEと他ファイルを保持し、INIを変更してZIPを再作成。
 - Release workflow `38153717250`: **成功**。v0.6.0-preview.1の配布ZIPサイズは74,582,881バイト。
 - GitHub Release ZIPのブラウザ側直接fetchはCORSに依存するため**未実機検証**。失敗時にはZIPをダウンロード→Webへドラッグ＆ドロップする経路を実装済み。
+
+### 音声速度設定のWeb UI（2026-10-12）
+- Web Actions `38154819045`：29件PASS、0件FAIL。速度スライダーの21段階、可視ラベル・読み上げラベル、すべての数値のINI往復テストを含む。
+- Windows Actions `38154818987`：成功。アプリ側は既存SAPI rate -10～10を維持し、Webの値と一致。
+- Web画面の実ブラウザでのタッチ・スクリーンリーダー操作は未実機検証。
