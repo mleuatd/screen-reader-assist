@@ -34,10 +34,26 @@ public sealed class MainForm : Form
     private int _cursorGeneration;
     private string _lastAutoText="";
     private readonly ToolStripMenuItem _modeMenu = new("読み上げモード");
+    private readonly TextBox _diagnosticEvents = new() {
+        Multiline=true,ReadOnly=true,ScrollBars=ScrollBars.Both,WordWrap=false,
+        Dock=DockStyle.Fill,AccessibleName="リアルタイム診断ログ。起動、ショートカット、OCR、音声再生の状態"
+    };
+    private readonly Label _health = new() {
+        AutoSize=true,Text="診断状態を確認しています…",AccessibleName="現在の動作状態"
+    };
+    private readonly System.Windows.Forms.Timer _healthTimer = new() { Interval=1000 };
+    private int _heartbeatCounter;
+    private bool _hotkeyRRegistered;
 
     public MainForm()
     {
-        try {_settings=AppSettings.Load();} catch { _settings=new AppSettings(); }
+        try {
+            _settings=AppSettings.Load();
+            DiagnosticLog.Info("設定",$"設定ファイルを読み込みました。読み上げモード={ReadingModes.Label(_settings.reading.mode)}、待機={_settings.reading.dwellMilliseconds}ms。");
+        } catch(Exception ex) {
+            DiagnosticLog.Error("設定読み込み",ex);
+            _settings=new AppSettings();
+        }
         Text="Screen Reader Assist 設定";
         AccessibleName="Screen Reader Assist 設定画面";
         MinimumSize=new Size(660,610);
@@ -63,6 +79,7 @@ public sealed class MainForm : Form
         menu.Items.Add("漫画の吹き出しを読む",null,async (_,_)=>await ReadBalloon());
         menu.Items.Add("注目中のUI要素を読む",null,(_,_)=>ReadFocused());
         menu.Items.Add("日本語音声の性能を検証",null,async (_,_)=>await DiagnoseJapaneseVoice());
+        menu.Items.Add("動作ログを表示",null,(_,_)=>OpenDiagnosticLog());
         menu.Items.Add("読み上げ停止",null,(_,_)=>_speech.Stop());
         menu.Items.Add("終了",null,(_,_)=>Quit());
         _tray.ContextMenuStrip=menu;
@@ -70,10 +87,19 @@ public sealed class MainForm : Form
         _tray.MouseClick+=(_,e)=> { if(e.Button==MouseButtons.Left) OpenSettings(); };
         _tray.DoubleClick+=(_,_)=>OpenSettings();
         BuildForm();
+        DiagnosticLog.EntryAdded+=OnLogEntryAdded;
+        _diagnosticEvents.Text=DiagnosticLog.Snapshot();
+        _diagnosticEvents.SelectionStart=_diagnosticEvents.TextLength;
+        _diagnosticEvents.ScrollToCaret();
         LoadControls();
         _cursorTimer.Tick+=CursorTimerTick;
         _pointerMovedAt=Environment.TickCount64;
         _cursorTimer.Start();
+        _healthTimer.Tick+=(_,_)=>RefreshHealth();
+        _healthTimer.Start();
+        DiagnosticLog.Info("常駐","通知領域に常駐しました。設定画面は非表示でも監視を続けます。");
+        if(DiagnosticLog.LastWriteError is string error) Status("EXE横にログを書き込めません: "+error);
+        RefreshHealth();
         // Deliberately start hidden instead of briefly flashing a settings window.
         // The tray icon and cursor-reading timer remain active during normal use.
     }
@@ -95,8 +121,15 @@ public sealed class MainForm : Form
     private void Register(int id,Keys k)
     {
         var modifiers = k==Keys.R ? NativeHotkeys.Control | NativeHotkeys.Alt : NativeHotkeys.Alt | NativeHotkeys.Shift;
-        if(!NativeHotkeys.RegisterHotKey(Handle,id,modifiers | NativeHotkeys.NoRepeat,(int)k))
-            _status.Text=$"ショートカット {(k==Keys.R ? "Ctrl+Alt+R" : $"Alt+Shift+{k}")} が競合しています。";
+        var description=k==Keys.R ? "Ctrl+Alt+R" : $"Alt+Shift+{k}";
+        bool ok=NativeHotkeys.RegisterHotKey(Handle,id,modifiers | NativeHotkeys.NoRepeat,(int)k);
+        if(k==Keys.R)_hotkeyRRegistered=ok;
+        if(ok) DiagnosticLog.Info("ショートカット",$"{description} をWindowsに登録しました。");
+        else {
+            int code=System.Runtime.InteropServices.Marshal.GetLastWin32Error();
+            DiagnosticLog.Warn("ショートカット",$"{description} の登録失敗。Windowsエラー={code}。他のアプリとのキー競合を確認してください。");
+            _status.Text=$"ショートカット {description} が競合しています（Windowsエラー {code}）。";
+        }
     }
     protected override void OnHandleDestroyed(EventArgs e)
     {
@@ -106,6 +139,7 @@ public sealed class MainForm : Form
     protected override void WndProc(ref Message m)
     {
         if(m.Msg==NativeHotkeys.WmHotkey) {
+            DiagnosticLog.Info("ショートカット",$"Windowsからホットキー通知を受信しました。ID={m.WParam.ToInt32()}。");
             switch(m.WParam.ToInt32()) {
                 case 1: _=ReadSelection(); break;
                 case 2: _=ReadBalloon(); break;
@@ -150,10 +184,28 @@ public sealed class MainForm : Form
         AddButton(io,"設定を書き出す",Export);
         AddButton(io,"設定を取り込む",Import);
         AddButton(io,"通知領域に戻る",HideSettings);
+        AddButton(io,"動作ログを開く",OpenDiagnosticLog);
+        AddButton(io,"ログをコピー",()=> {
+            try {Clipboard.SetText(DiagnosticLog.Snapshot());Status("診断ログの最近の内容をコピーしました。");}
+            catch(Exception ex){DiagnosticLog.Error("ログコピー",ex);Status("ログのコピーに失敗しました。");}
+        });
         AddButton(io,"終了",Quit);
         panel.Controls.Add(io,0,row);panel.SetColumnSpan(io,2);row++;
         panel.Controls.Add(_status,0,row);panel.SetColumnSpan(_status,2);row++;
-        panel.Controls.Add(_last,0,row);panel.SetColumnSpan(_last,2);
+        var tabs=new TabControl { Dock=DockStyle.Fill,AccessibleName="認識文字と動作状況" };
+        var diagnosticPage=new TabPage("動作状況（リアルタイム）");
+        var lastTextPage=new TabPage("最後に認識した文字");
+        var diagnosticLayout=new TableLayoutPanel { Dock=DockStyle.Fill,RowCount=2,ColumnCount=1 };
+        diagnosticLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        diagnosticLayout.RowStyles.Add(new RowStyle(SizeType.Percent,100));
+        diagnosticLayout.Controls.Add(_health,0,0);
+        diagnosticLayout.Controls.Add(_diagnosticEvents,0,1);
+        diagnosticPage.Controls.Add(diagnosticLayout);
+        lastTextPage.Controls.Add(_last);
+        tabs.TabPages.Add(diagnosticPage);
+        tabs.TabPages.Add(lastTextPage);
+        panel.Controls.Add(tabs,0,row);panel.SetColumnSpan(tabs,2);
+        tabs.MinimumSize=new Size(0,150);
         _last.Dock=DockStyle.Fill;
         void Add(string label,Control ctl,int r) {
             var lab=new Label {Text=label,AutoSize=true,TextAlign=ContentAlignment.MiddleLeft,Margin=new Padding(0,8,4,7)};
@@ -203,6 +255,44 @@ public sealed class MainForm : Form
         int idx=_voice.Items.IndexOf(_settings.speech.voiceName);
         _voice.SelectedIndex=idx>=0?idx:0;
     }
+    private void OnLogEntryAdded(string line)
+    {
+        if(IsDisposed || !IsHandleCreated)return;
+        try {
+            if(InvokeRequired){BeginInvoke(new Action(()=>OnLogEntryAdded(line)));return;}
+            if(IsDisposed)return;
+            _diagnosticEvents.AppendText(line+Environment.NewLine);
+            if(_diagnosticEvents.TextLength>26000)
+                _diagnosticEvents.Text=_diagnosticEvents.Text[^16000..];
+            if(Visible){
+                _diagnosticEvents.SelectionStart=_diagnosticEvents.TextLength;
+                _diagnosticEvents.ScrollToCaret();
+            }
+        } catch(InvalidOperationException) { /* Form is closing. */ }
+    }
+    private void RefreshHealth()
+    {
+        if(IsDisposed)return;
+        var state=Visible?"設定画面を表示中（カーソル自動読み上げは一時停止）":
+            _busy?"範囲選択・漫画読み取りの処理中":
+            _hoverBusy?"カーソル位置の文字認識中":
+            ReadingModes.IsAuto(_settings.reading.mode)?"カーソル自動読み上げの監視中":"自動読み上げ停止中";
+        _health.Text=$"状態: {state} / モード: {ReadingModes.Label(_settings.reading.mode)} / Ctrl+Alt+R: {(_hotkeyRRegistered?"登録済み":"登録できていません")}";
+        if(++_heartbeatCounter%30==0)
+            DiagnosticLog.Info("稼働確認",$"アプリ稼働中。状態={state}、範囲選択中={_busy}、OCR処理中={_hoverBusy}、Ctrl+Alt+R登録済み={_hotkeyRRegistered}。");
+    }
+    private void OpenDiagnosticLog()
+    {
+        try {
+            if(!File.Exists(DiagnosticLog.FilePath)){
+                Status("まだログファイルがありません。"+(DiagnosticLog.LastWriteError??""));
+                return;
+            }
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(DiagnosticLog.FilePath){
+                UseShellExecute=true
+            });
+        } catch(Exception ex){DiagnosticLog.Error("ログ表示",ex);Status("ログを開けません。設定画面の動作状況を確認してください。");}
+    }
     private void SaveControls()
     {
         try {
@@ -215,8 +305,10 @@ public sealed class MainForm : Form
             _settings.magnifier.enableTripleClick=false;
             _settings.ocr.copyToClipboard=_copy.Checked;
             _settings.ocr.preferJapanese=_japanese.Checked;
-            _settings.Save();Status("設定を保存しました。");
-        } catch(Exception ex) { Status("設定保存エラー: "+ex.Message); }
+            _settings.Save();
+            DiagnosticLog.Info("設定","設定変更を保存しました。");
+            Status("設定を保存しました。");
+        } catch(Exception ex) {DiagnosticLog.Error("設定保存",ex);Status("設定保存エラー: "+ex.Message); }
     }
     private void UpdateModeMenu()
     {
@@ -236,8 +328,9 @@ public sealed class MainForm : Form
         try { if(_readingMode.SelectedIndex!=index) _readingMode.SelectedIndex=index; }
         finally { _loadingMode=false; }
         UpdateModeMenu();
+        DiagnosticLog.Info("モード",$"読み上げモードを{ReadingModes.Label(mode)}に変更しました。");
         try { _settings.Save(); Status("読み上げモード："+ReadingModes.Label(mode)); }
-        catch(Exception ex) { Status("モード設定の保存に失敗: "+ex.Message); }
+        catch(Exception ex) { DiagnosticLog.Error("モード保存",ex);Status("モード設定の保存に失敗: "+ex.Message); }
     }
     private void CursorTimerTick(object? sender,EventArgs e)
     {
