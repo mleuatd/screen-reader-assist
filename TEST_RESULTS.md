@@ -71,3 +71,8 @@ Windows向け自動テストは`tests/ScreenReaderAssist.Tests/`に存在する�
 - [x] Webテスト `38127109071` **成功**。
 - [x] Windows実験版ZIP `v0.3.0-preview.1` のGitHub Releases公開成功。Actions `38127109058`、74,556,618バイト。
 - [ ] Windowsのタッチ実機、YouTubeリンク、OCRテキスト選択、SAPI音声品質は未検証。
+
+### v0.4 モード切替の検証項目
+- Windowsロジックテスト：既定のcursor/ocrFallback、旧version1の設定、異常mode/dwellMilliseconds、manga/selection/off判定を追加。
+- Web設定テスト：既定値、変更保存、旧JSON互換、異常値補正を追加。
+- Windows GUI実機：カーソルからUIAを取得できるか、OCRに自動で切り替わるか、漫画吹き出しを正しく認識するかは未確認。

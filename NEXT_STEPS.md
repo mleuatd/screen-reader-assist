@@ -1,7 +1,8 @@
-# v0.3 カーソル読み上げ版（2026-10-11）
-
-1. 正本は mleuatd/screen-reader-assist の main。読み取りモードでカーソル約850ms静止→近いOCR行を読む。
-2. クリックは近傍行、ドラッグは矩形全体、Hでホバー読み上げ切替、Escで終了。
-3. Windowsビルド/ロジックテスト16件（Actions 38127109047）成功、Webテスト（38127109071）成功。Windows試用版 v0.3.0-preview.1（38127109058）は公開済み。
-4. 実機でブラウザ/YouTubeリンクへの非干渉、2行以上タイトルの精度、タッチ環境を確認する。
-5. 専用GitHub Pages初期設定は未完了。Web体験版はraw.githack.comで公開。
+# v0.4 複数モード（2026-10-11）
+1. 正本は mleuatd/screen-reader-assist。標準はカーソル静止時にUIA→OCR補完。manga/selection/offの設定も実装済み。
+2. Windows Actionsビルドと自動テスト結果を確認する。問題が出たら修正。
+3. Web設定画面のNodeテストと旧形式JSONの読み込みを確認。
+4. Windowsプレリリース v0.4.0-preview.1 を公開し、WebサイトとREADMEの最新版ZIPリンクを確認。
+5. 実機でUIA ElementFromPointを検証。文字データの無いリンクや画像の場合のOCR補完と、その認識精度も検証。
+6. 漫画はカーソル近傍の吹き出しOCRにとどまる。自動コマ順判定は未実装。
+7. GitHub Pages初期有効化は未完了、Web体験版はGitHub-backed外部配信。
