@@ -396,19 +396,22 @@ public sealed class MainForm : Form
     private void Export()
     {
         SaveControls();
-        using var dialog=new SaveFileDialog{Filter="JSON ファイル|*.json",FileName="screen-reader-assist-settings.json"};
+        using var dialog=new SaveFileDialog{Filter="INI ファイル|*.ini",FileName="settings.ini"};
         if(dialog.ShowDialog()==DialogResult.OK) {
-            try { File.WriteAllText(dialog.FileName,JsonSerializer.Serialize(_settings,AppSettings.JsonOptions));Status("設定を書き出しました。"); }
+            try { File.WriteAllText(dialog.FileName,PortableIni.Write(_settings),new System.Text.UTF8Encoding(false));Status("設定を書き出しました。"); }
             catch(Exception ex){Status("書き出し失敗: "+ex.Message);}
         }
     }
     private void Import()
     {
-        using var dialog=new OpenFileDialog{Filter="JSON ファイル|*.json"};
+        using var dialog=new OpenFileDialog{Filter="INI 設定または旧JSON|*.ini;*.json|INI ファイル|*.ini|旧JSON ファイル|*.json"};
         if(dialog.ShowDialog()==DialogResult.OK) {
             try {
                 if(new FileInfo(dialog.FileName).Length>100_000) throw new InvalidDataException("設定ファイルが大きすぎます。");
-                _settings=AppSettings.Normalize(JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(dialog.FileName),AppSettings.JsonOptions)??new());
+                _settings=Path.GetExtension(dialog.FileName).Equals(".ini",StringComparison.OrdinalIgnoreCase)
+                    ? PortableIni.Parse(File.ReadAllText(dialog.FileName,System.Text.Encoding.UTF8))
+                    : AppSettings.Normalize(JsonSerializer.Deserialize<AppSettings>(
+                        File.ReadAllText(dialog.FileName),AppSettings.JsonOptions)??new());
                 _settings.Save();LoadControls();Status("設定を取り込みました。");
             } catch(Exception ex){Status("取り込み失敗: "+ex.Message);}
         }

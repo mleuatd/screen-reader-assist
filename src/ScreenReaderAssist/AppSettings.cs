@@ -8,22 +8,28 @@ public sealed class AppSettings
     public OcrSettings ocr { get; set; } = new();
     public MagnifierSettings magnifier { get; set; } = new();
     public ReadingSettings reading { get; set; } = new();
-    public static string SettingsFile => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ScreenReaderAssist", "settings.json");
+    // Portable first: this is located beside ScreenReaderAssist.exe, not in AppData.
+    public static string SettingsFile => Path.Combine(AppContext.BaseDirectory,"settings.ini");
+    public static string LegacyJsonSettingsFile => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "ScreenReaderAssist","settings.json");
     public static JsonSerializerOptions JsonOptions { get; } = new() { WriteIndented = true, PropertyNameCaseInsensitive = true };
     public static AppSettings Load()
     {
-        try {
-            if (!File.Exists(SettingsFile)) return new();
-            return Normalize(JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(SettingsFile), JsonOptions) ?? new());
-        } catch (Exception) { return new(); }
+        if(File.Exists(SettingsFile))
+            return PortableIni.Parse(File.ReadAllText(SettingsFile,System.Text.Encoding.UTF8));
+        // Migration path for older previews. Never modify or delete the old JSON.
+        if(File.Exists(LegacyJsonSettingsFile))
+            return Normalize(JsonSerializer.Deserialize<AppSettings>(
+                File.ReadAllText(LegacyJsonSettingsFile),JsonOptions) ?? new());
+        return new();
     }
     public void Save()
     {
-        var dir = Path.GetDirectoryName(SettingsFile)!;
-        Directory.CreateDirectory(dir);
-        var tmp = SettingsFile + ".tmp";
-        File.WriteAllText(tmp, JsonSerializer.Serialize(Normalize(this), JsonOptions));
-        File.Move(tmp, SettingsFile, true);
+        var tmp=SettingsFile+".tmp";
+        // Same-folder portable configuration. Do not silently save to another path.
+        File.WriteAllText(tmp,PortableIni.Write(Normalize(this)),new System.Text.UTF8Encoding(false));
+        File.Move(tmp,SettingsFile,true);
     }
     public static AppSettings Normalize(AppSettings config)
     {

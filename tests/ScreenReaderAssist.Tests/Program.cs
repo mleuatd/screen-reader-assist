@@ -14,6 +14,21 @@ Check(settings.magnifier.zoom==6.0,"zoom clamped");
 var json=JsonSerializer.Serialize(settings,AppSettings.JsonOptions);
 var loaded=AppSettings.Normalize(JsonSerializer.Deserialize<AppSettings>(json,AppSettings.JsonOptions)!);
 Check(loaded.speech.rate==10 && loaded.version==1,"settings JSON round-trip");
+var sampleIni=PortableIni.Write(new AppSettings {
+    reading=new ReadingSettings{mode=ReadingModes.Manga,dwellMilliseconds=850,ocrFallback=false},
+    speech=new SpeechSettings{rate=3,volume=55,voiceName="日本語 \"A=B\""},
+    magnifier=new MagnifierSettings{zoom=2.5f},
+    ocr=new OcrSettings{copyToClipboard=true,preferJapanese=false}
+});
+var parsedIni=PortableIni.Parse(sampleIni);
+Check(parsedIni.reading.mode==ReadingModes.Manga && parsedIni.reading.dwellMilliseconds==850,"portable INI reading mode and dwell round trip");
+Check(parsedIni.speech.voiceName=="日本語 \"A=B\"" && parsedIni.speech.rate==3 && parsedIni.speech.volume==55,"portable UTF-8 INI Japanese voice and settings round trip");
+Check(parsedIni.ocr.copyToClipboard && !parsedIni.ocr.preferJapanese && parsedIni.magnifier.zoom==2.5f,"portable INI OCR and magnifier settings round trip");
+Check(PortableIni.Parse("; comment\n[reading]\nmode=selection\nunknownKey=value\n").reading.mode==ReadingModes.Selection,"INI accepts comments and unknown keys");
+Check(PortableIni.Parse("[reading]\ndwellMilliseconds=99999\nmode=invalid\n").reading.dwellMilliseconds==2000,"INI numeric limits enforced");
+try {PortableIni.Parse("[app]\nversion=999\n");throw new Exception("FAIL: invalid INI version accepted");}
+catch(InvalidDataException){Console.WriteLine("PASS: unsupported INI schema rejected");}
+Check(Path.GetFileName(AppSettings.SettingsFile)=="settings.ini","portable configuration path uses settings.ini beside exe");
 try {AppSettings.Normalize(new AppSettings{version=99}); throw new Exception("FAIL: invalid schema accepted");}
 catch(InvalidDataException) {Console.WriteLine("PASS: settings version rejected");}
 using var bmp=new Bitmap(600,500);
