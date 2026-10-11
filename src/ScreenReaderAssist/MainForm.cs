@@ -237,7 +237,12 @@ public sealed class MainForm : Form
         _hoverBusy=true;
         try {
             string value="";
-            if(mode==ReadingModes.Cursor) value=UiAutomationReader.ReadAtPoint(point);
+            if(mode==ReadingModes.Cursor) {
+                value=UiAutomationReader.ReadAtPoint(point);
+                // Legacy accessibility is still exposed by many Windows/browser controls.
+                if(string.IsNullOrWhiteSpace(value))
+                    value=UiAutomationReader.ReadMsaaAtPoint(point);
+            }
             if(string.IsNullOrWhiteSpace(value) &&
                 (mode==ReadingModes.Manga || _settings.reading.ocrFallback)) {
                 var desktop=ScreenCapture.VirtualBounds;
