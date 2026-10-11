@@ -13,7 +13,9 @@
   <main id="content" class="container">
     <section class="hero" aria-labelledby="heroTitle"><p class="eyebrow">Windows 11 / 個人利用無料 / 日本語優先</p><h1 id="heroTitle">カーソルを合わせて、<br>文字を聞く。</h1><p>標準モードではWindowsの文字情報を読み取り、取得できない文字も設定により画像OCRを試せます。通常OCRが失敗した場合は文字らしい範囲を自動検出し、拡大・補正して再試行します。漫画の吹き出しをクリックする試験モードや、一時拡大も搭載する開発中のアクセシビリティアプリです。</p><a class="button primary" id="download" href="https://github.com/mleuatd/screen-reader-assist/releases/download/v0.5.1-preview.1/ScreenReaderAssist-win-x64.zip">Windows用試用版をダウンロード</a><p class="fine">v0.5.1-preview.1 の試用版を公開中です。Windows上での画面操作・音声・拡大は未検証のため、正式版ではありません。アプリは署名されていないため警告が出る場合があります。</p></section>
     <section class="card" aria-labelledby="tryTitle" id="try-demo"><h2 id="tryTitle">まずはブラウザで無料体験</h2><p>アプリをインストールせず、スマホやパソコンで、範囲読み上げ・漫画の吹き出し読み上げ・3回タップ拡大を試せます。声の高さや読み上げ速度も設定できます。</p><a class="button primary" href="demo.html">インストールせずに体験する</a><p class="fine">サンプル画面の模擬OCRです。音声は端末のブラウザ機能を使用し、Windows全体の画面読み取りは行いません。</p></section>
-    <section aria-labelledby="settingsHeading" id="settings" class="card"><h2 id="settingsHeading">設定ファイルを作る</h2><p>ここで設定を変更し、JSONファイルをダウンロードしてWindowsアプリの「設定を取り込む」から読み込んでください。入力内容は外部サーバーへ送信しません。</p>
+    <section aria-labelledby="settingsHeading" id="settings" class="card"><h2 id="settingsHeading">設定してWindows版ZIPを作る</h2>
+      <p>この画面の設定が<code>settings.ini</code>になります。Windows用ZIPに実行ファイルと一緒に入れてダウンロードできます。文字はメモ帳で直接編集できます。設定内容や取り込んだZIPはサーバーへアップロードしません。</p>
+      <p><strong>使い方：</strong>下の項目を設定して「設定済みZIPを作成」を押してください。ブラウザが公式ZIPを取得できない場合は、上のWindows用ZIPを一度ダウンロードして、下の枠にドラッグしてください。</p>
       <div class="formgrid">
         <div><label for="reading-mode">読み上げモード</label><select id="reading-mode"><option value="cursor">カーソルで自動読み上げ（標準）</option><option value="manga">漫画の吹き出しOCR（カーソル）</option><option value="selection">範囲選択のみ</option><option value="off">自動読み上げ停止</option></select></div>
         <div><label for="reading-dwell">カーソル静止の待ち時間（ミリ秒）</label><input id="reading-dwell" type="number" min="400" max="2000" step="100" value="750"></div>
@@ -26,12 +28,22 @@
         <div class="check"><input type="checkbox" id="copy"><label for="copy">認識文字を自動コピー</label></div>
         <div class="check"><input type="checkbox" id="japanese" checked><label for="japanese">日本語OCRを優先</label></div>
       </div>
-      <div class="actions"><button id="save" class="button primary" type="button">設定JSONをダウンロード</button><button id="copyJson" class="button secondary" type="button">設定JSONをコピー</button><label for="import">既存の設定を読み込む</label><input type="file" id="import" accept="application/json,.json"></div>
+      <div class="actions">
+        <button id="package" class="button primary" type="button">設定済みWindows版ZIPを作成してダウンロード</button>
+        <button id="save" class="button secondary" type="button">settings.iniだけ保存</button>
+        <button id="copyJson" class="button secondary" type="button">INI内容をコピー</button>
+      </div>
+      <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="既存のWindows版ZIP、INI、旧JSONファイルを取り込む。クリックまたはEnterでファイル選択。">
+        <strong>既存のZIPまたは設定ファイルをここにドラッグ＆ドロップ</strong>
+        <p>以前作成したWindows用ZIPを丸ごと読み込めます。設定を編集したあと、再びZIPに書き出せます。</p>
+        <label for="import" class="button secondary">ZIP・INI・JSONファイルを選択</label>
+        <input type="file" id="import" accept=".zip,.ini,.json,application/zip,application/json" aria-label="取り込むZIPまたはINIファイル">
+      </div>
       <p id="message" role="status" aria-live="polite"></p>
-      <details><summary>設定JSONのプレビュー</summary><pre id="preview"></pre></details>
+      <details><summary>settings.iniの内容を見る（メモ帳で編集可能）</summary><pre id="preview"></pre></details>
     </section>
     <section id="help" class="card" aria-labelledby="helpTitle"><h2 id="helpTitle">基本操作</h2><dl><dt>標準（自動カーソル）</dt><dd>アプリ常駐中、約0.75秒カーソルを止めると文字を読み上げます。まずWindowsの文字情報、必要ならOCRで補います。クリック操作には介入しません</dd><dt>漫画モード</dt><dd>カーソル付近の吹き出しと思われる部分をOCRして読み上げます（試験版。自動的なコマ順推定には未対応）</dd><dt>Ctrl + Alt + R</dt><dd>画面上の専用選択モードを開き、タッチ・ドラッグまたはキーボードで範囲を決めて読み上げ。1回タップで周辺を読む</dd><dt>Alt + Shift + M</dt><dd>漫画の吹き出しをクリックしてOCR（簡易検出・試験版）</dd><dt>Alt + Shift + U</dt><dd>現在フォーカス中のUI Automation文字を読む</dd><dt>Alt + Shift + S / P</dt><dd>停止 / 一時停止・再開</dd><dt>Alt + Shift + Z</dt><dd>画面拡大の開始・終了（試験的）</dd></dl><p>読み上げモードはWindowsアプリの設定からも切り替えられます。設定ファイルで読み上げモードや待ち時間も編集できます。画像OCRや漫画の解析は実機での精度検証が必要です。</p><p>画像や保護されたゲームの文字は読み取れない場合があります。無料のWindows音声合成で日本語音声がない場合は、Windowsの言語・音声設定を確認してください。</p></section>
     <footer><p>オフライン処理・プライバシー優先。公開ソースの初期試作です。声優本人の音声を学習・複製する機能はありません。</p></footer>
-  </main><script type="module" src="app.js"></script>
+  </main><script src="vendor/jszip.min.js"></script><script type="module" src="app.js"></script>
 </body>
 </html>
