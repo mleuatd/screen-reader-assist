@@ -1,6 +1,6 @@
 # Windows 11での試用手順（実験版）
 
-1. [試用版ZIP](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.6.4-preview.1/ScreenReaderAssist-win-x64.zip)を取得し、任意のフォルダーに展開します。
+1. [試用版ZIP](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.6.5-preview.1/ScreenReaderAssist-win-x64.zip)を取得し、任意のフォルダーに展開します。
 2. 展開した`ScreenReaderAssist.exe`を起動します。署名されていないためWindows SmartScreen警告が表示される場合があります。信頼できない場合は起動しないでください。
 3. 起動すると通知領域に常駐します。設定を開くには通知領域のアイコンをダブルクリックします。
 4. `Ctrl+Alt+R`で範囲選択、`Alt+Shift+M`で吹き出しクリック、`Alt+Shift+U`でフォーカス中のUI文字取得、`Alt+Shift+S`で停止、`Alt+Shift+P`で一時停止・再開、`Alt+Shift+Z`で一時拡大です。
@@ -65,3 +65,9 @@ Web設定画面の「音声の読み上げ速度」には横長スライダー�
 
 ## v0.6.4：範囲選択の確認音
 `Ctrl+Alt+R`を押すと、範囲選択を受け付けた合図として「高く上がる二音」が鳴ります。選択が終わったときや`Esc`でキャンセルしたときは「低く下がる二音」が鳴ります。終了音は範囲選択画面を閉じた合図であり、文字認識や読み上げ音声が終わった合図ではありません。確認音が出ない場合は、Windowsの音量や出力先と、EXEの隣の`ScreenReaderAssist.log`にある`[操作音]`を確認してください。
+
+## 画面が拡大したまま元に戻らない場合（v0.6.5）
+- Windows標準の拡大鏡なら`Windowsキー+Esc`で終了できます。
+- 古いアプリの強制終了によって全画面倍率だけが残った場合は、v0.6.5以降を起動すると（Windows標準拡大鏡が動いていなければ）表示の復旧を試行します。
+- 復旧しないときは、同梱の`ResetScreen.cmd`を起動すると、画面倍率の初期化を明示的に試行します。完全に戻らない場合は、ログ `ScreenReaderAssist.log` を確認してください。
+- **独自の全画面拡大機能は停止しました。** 拡大はWindows標準機能を使用してください。標準の拡大鏡が動いているときに`Ctrl+Alt+R`が反応しなければ、拡大鏡の同名キー操作との競合が考えられます。

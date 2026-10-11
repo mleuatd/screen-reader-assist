@@ -179,3 +179,8 @@ Windows向け自動テストは`tests/ScreenReaderAssist.Tests/`に存在する�
 - Web Actions `38176969577`：**成功**（今回Web設定のコード変更はなし）。
 - Release Actions `38176969484`：**成功**、`v0.6.4-preview.1`公開、配布ZIP`ScreenReaderAssist-win-x64.zip` 74,584,009 bytes。
 - 実機上で効果音が鳴ること・Windowsの音量や他アプリへの干渉は未検証。
+
+### v0.6.5 画面拡大を戻せない問題の安全対応
+- モックAPIにより、強制終了後に残った倍率3.5→1・移動位置0,0、初期状態の保持、標準拡大鏡の利用中は起動時復旧を避ける、利用者の手動復旧、APIエラー、旧拡大機能の完全停止を検証。
+- 実Windows 11のディスプレイに対するMagnification API実呼出しはヘッドレスCI環境のため未検証。
+- Ctrl+Alt+RとWindows標準拡大鏡のキー競合にも注意。通知領域メニューにショートカット不要の読み取り操作あり。

@@ -33,8 +33,10 @@ jobs:
         shell: pwsh
         run: |
           Copy-Item -Path settings.ini -Destination publish/settings.ini -Force
+          Copy-Item -Path ResetScreen.cmd -Destination publish/ResetScreen.cmd -Force
           if (-not (Test-Path 'publish/ScreenReaderAssist.exe')) { throw 'Missing portable EXE' }
           if (-not (Test-Path 'publish/settings.ini')) { throw 'Missing portable INI' }
+          if (-not (Test-Path 'publish/ResetScreen.cmd')) { throw 'Missing emergency display repair' }
       - name: ZIP app
         shell: pwsh
         run: Compress-Archive -Path publish\* -DestinationPath ScreenReaderAssist-win-x64.zip

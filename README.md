@@ -1,11 +1,11 @@
-# Screen Reader Assist — Windows 11 視覚障害支援アプリ（試作 v0.6.4）
+# Screen Reader Assist — Windows 11 視覚障害支援アプリ（試作 v0.6.5）
 
 **[インストール不要でブラウザ体験（スマホ・PC）](https://raw.githack.com/mleuatd/screen-reader-assist/main/site/demo.html)** | [Web設定画面（GitHub経由）](https://raw.githack.com/mleuatd/screen-reader-assist/main/site/index.html)
 
 
 画面の任意範囲からWindowsの日本語OCRで文字を取り出し、インストール済みの音声合成エンジンで読み上げる、常駐型オープンソースアプリの**試作ソースコード**です。
 
-> **検証状況（2026-10-11）:** GitHub Actions のWindowsビルド・ロジックテストとWeb設定テストが成功。`win-x64` の配布アーティファクト生成を確認済み。v0.5のWindowsビルドと43件のロジックテストに成功。Windows GUIでの操作、ゲーム・漫画OCR・タッチ入力などの実機検証は未実施。GitHub Releases 最新プレビュー v0.6.4-preview.1 を公開済み。GitHub Pagesは初期有効化待ちですが、無料のGitHubファイル表示サービスで公開体験版を利用可能。試作版につき未検証機能に注意。
+> **検証状況（2026-10-11）:** GitHub Actions のWindowsビルド・ロジックテストとWeb設定テストが成功。`win-x64` の配布アーティファクト生成を確認済み。v0.5のWindowsビルドと43件のロジックテストに成功。Windows GUIでの操作、ゲーム・漫画OCR・タッチ入力などの実機検証は未実施。GitHub Releases 最新プレビュー v0.6.5-preview.1 を公開済み。GitHub Pagesは初期有効化待ちですが、無料のGitHubファイル表示サービスで公開体験版を利用可能。試作版につき未検証機能に注意。
 
 ## 主な機能（実装済みコード／動作未検証）
 
@@ -76,7 +76,7 @@ dotnet publish src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release -r wi
 
 ## 試験版を入手する
 
-- [Windows 11 x64向け試験版 ZIP (v0.6.4-preview.1)](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.6.4-preview.1/ScreenReaderAssist-win-x64.zip)
+- [Windows 11 x64向け試験版 ZIP (v0.6.5-preview.1)](https://github.com/mleuatd/screen-reader-assist/releases/download/v0.6.5-preview.1/ScreenReaderAssist-win-x64.zip)
 - **注意**: 実機GUI検証は未実施。初回起動時のSmartScreen警告の可能性あり。Windows標準のOCR言語と読み上げ音声が必要です。
 
 ## ブラウザ体験版（アプリのインストール不要）
@@ -114,7 +114,7 @@ dotnet publish src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release -r wi
 - ドラッグして離すと囲んだ座標をOCR。短いタップの場合は周辺（最大360×160ピクセル）をOCR。Escで中止。
 - 選択中は通常アプリにクリック操作が伝わらないことを意図した構造ですが、UACセキュアデスクトップ、排他的フルスクリーン、他のTopMostウィンドウ等の特例があります。実機での入力非干渉テストは未完了。
 - 以前の設定ファイルの`magnifier.enableTripleClick:true`は読み込み時に無効化。グローバル3連クリックフックは使用しません。
-- 対応バージョンは次のプレビューリリース以降です。旧`v0.6.4-preview.1`はホットキーが違います。
+- 対応バージョンは次のプレビューリリース以降です。旧`v0.6.5-preview.1`はホットキーが違います。
 
 ## v0.3 カーソルを止めて読み上げ（試作）
 
@@ -218,3 +218,14 @@ Web設定画面は速度のスライダーを大きく表示し、遅い（-10�
 - 各音は約185ミリ秒。C#で生成した異なるWAV波形を`System.Media.SoundPlayer`で非同期再生します。音声合成のSAPIや日本語音声の有無には依存しません。ネットワーク通信も追加データファイルも不要です。
 - 二重操作で範囲選択が既に進行中の場合は、新しい開始音を出しません。音声再生に失敗した場合でもOCRとホットキーは動作を継続し、`ScreenReaderAssist.log`の`[操作音]`に成功要求・例外を記録します。
 - 自動テストはWAV形式・サンプルレート・2種類の波形・短い長さを検証します。実Windows 11のスピーカー・音量・オーディオ出力で聞こえるかは未確認です。
+
+## v0.6.5 安全のため全画面拡大を停止し、画面復旧を実装
+
+**重要：v0.6.4以前の試用版の`Alt+Shift+Z`による独自全画面拡大は、タスクマネージャーで強制終了すると表示倍率が元に戻らない危険性が判明しました。**
+- v0.6.5以降は独自のシステム全体の拡大機能を**無効化**しました。`Alt+Shift+Z`は拡大の開始ではなく、表示倍率を元に戻す**緊急復旧操作**になります。
+- アプリを起動した際、Windows標準の拡大鏡 `Magnify.exe` が動いていない場合に限り、Magnification APIの全画面変換を確認し、1倍・位置0へ初期化します。標準の拡大鏡が動作している場合は利用中の拡大を勝手に解除しません。
+- 緊急時は同梱の`ResetScreen.cmd`をダブルクリックしてください。`ScreenReaderAssist.exe --reset-display`を起動して強制的に全画面変換を標準値へ戻します。この操作ではWindows標準の拡大鏡による全画面変換も解除し得るため、利用者が意識して実行する復旧コマンドです。
+- 画面復旧の動作／失敗は`ScreenReaderAssist.log`に記録されます。Windows拡大鏡そのものは`Windowsキー+Esc`で終了できます。
+- `Ctrl+Alt+R`はWindows標準拡大鏡の「レンズのサイズを変更」にも割り当てられます。ショートカットが競合するとアプリ側の登録ができないため、`ScreenReaderAssist.log`のショートカット登録状況を確認してください。競合時は通知領域の「範囲を読み上げ」メニューでも起動できます。<https://support.microsoft.com/ja-jp/accessibility/windows/windows-keyboard-shortcuts-for-accessibility>
+- Windows 11での拡大はWindows標準拡大鏡を推奨。アプリのカーソル自動読み上げ、手動OCR、漫画OCR、音声読み上げはそのまま維持しています。
+- GitHub Actionsはモック画面変換ドライバーを使用した復旧ロジックのテストです。実際のWindows全画面表示の復旧や強制終了についてはユーザーのWindows実機で未検証です。

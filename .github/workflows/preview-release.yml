@@ -34,8 +34,10 @@ jobs:
           dotnet publish src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Copy-Item -Path settings.ini -Destination publish/settings.ini -Force
+          Copy-Item -Path ResetScreen.cmd -Destination publish/ResetScreen.cmd -Force
           if (-not (Test-Path 'publish/ScreenReaderAssist.exe')) { throw 'Missing portable EXE' }
           if (-not (Test-Path 'publish/settings.ini')) { throw 'Missing portable INI' }
+          if (-not (Test-Path 'publish/ResetScreen.cmd')) { throw 'Missing emergency display repair' }
           Compress-Archive -Path publish\* -DestinationPath ScreenReaderAssist-win-x64.zip
       - name: Publish marked prerelease
         shell: pwsh
@@ -43,9 +45,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           @'
-          # Experimental preview / Ctrl+Alt+Rの開始・終了音対応版
-          Windows 11 x64向けの実験版です。起動するとEXEと同じフォルダーへScreenReaderAssist.logを作成し、Ctrl+Alt+R、OCR、SAPI音声合成の動作とエラーを記録します。Ctrl+Alt+Rで範囲選択を開始すると上昇2音、選択画面を終了（Escキャンセルを含む）すると下降2音が鳴るようになりました。両音は日本語音声パック不要のローカルWAVで、OCRの処理を待たずに通知します。設定画面の「動作状況（リアルタイム）」タブや「音声テスト」ボタンでも確認できます。ログにOCR全文や画面画像は含めません。起動直後は設定画面を隠し、タスクバー右端の通知領域に常駐します。カーソル自動読み上げ・漫画OCRは引き続き常駐中に動作します。通知領域アイコン左クリックで設定を表示、右クリックで「設定を開く」を選べます。設定画面右上×は終了ではなく非表示にし、音声読み上げを継続。終了は通知領域メニューの「終了」で行います。ZIPには日本語セクション名・項目名・はい／いいえに対応したUTF-8 settings.iniをEXEの隣に同梱。以前の英語INIも読み込み可能です。起動するとこのINIを読み、設定を保存すると同じINIへ保存します。Webサイトで設定済みZIPを作成・既存ZIPを再編集できます。ビルドと設定・吹き出し検出のロジックテストは実行済みですが、実機でのGUI操作、音声読み上げ、ゲーム、漫画、日本語縦書きOCR、拡大操作は未検証です。
+          # Experimental preview / 危険な独自の全画面拡大を無効化し、画面復旧ツールを同梱
+          Windows 11 x64向けの実験版です。安全上の問題が判明したため、独自の全画面拡大は停止し、次回起動時の表示復旧とResetScreen.cmdによる手動復旧を追加しました。Windows標準の拡大鏡が動作している場合は通常起動時に拡大倍率を変更しません。拡大についてはWindows標準機能をご利用ください。起動するとEXEと同じフォルダーへScreenReaderAssist.logを作成し、Ctrl+Alt+R、OCR、SAPI音声合成の動作とエラーを記録します。Ctrl+Alt+Rで範囲選択を開始すると上昇2音、選択画面を終了（Escキャンセルを含む）すると下降2音が鳴るようになりました。両音は日本語音声パック不要のローカルWAVで、OCRの処理を待たずに通知します。設定画面の「動作状況（リアルタイム）」タブや「音声テスト」ボタンでも確認できます。ログにOCR全文や画面画像は含めません。起動直後は設定画面を隠し、タスクバー右端の通知領域に常駐します。カーソル自動読み上げ・漫画OCRは引き続き常駐中に動作します。通知領域アイコン左クリックで設定を表示、右クリックで「設定を開く」を選べます。設定画面右上×は終了ではなく非表示にし、音声読み上げを継続。終了は通知領域メニューの「終了」で行います。ZIPには日本語セクション名・項目名・はい／いいえに対応したUTF-8 settings.iniをEXEの隣に同梱。以前の英語INIも読み込み可能です。起動するとこのINIを読み、設定を保存すると同じINIへ保存します。Webサイトで設定済みZIPを作成・既存ZIPを再編集できます。ビルドと設定・吹き出し検出のロジックテストは実行済みですが、実機でのGUI操作、音声読み上げ、ゲーム、漫画、日本語縦書きOCR、拡大操作は未検証です。
           無署名アプリのためWindows SmartScreenが警告を表示する可能性があります。初めての実行は未保存のデータや重要な操作がない状態で行ってください。
           日本語SAPI音声診断ボタンを追加（環境に日本語音声がなければ未測定と明示）。標準はカーソル静止でUIAからデジタル文字を読み、取得不可ならOCR補完。通常OCRが失敗した場合、文字らしい矩形を自動検出し拡大・明暗補正して最大2候補をOCR再試行。漫画OCR、範囲選択、停止の4モードを設定画面・通知領域で切替。Ctrl+Alt+Rで最前面の読み上げ選択モードを起動。カーソルを約1秒止めると近傍の文字行をOCRして自動読み上げ。マウス/タッチのドラッグで範囲選択、1回タップで周辺をOCRします。グローバル3回クリック拡大は廃止しました。選択モードのタッチ操作は実機未検証です。使用条件・既知の問題はREADMEとISSUES.mdを参照してください。
           '@ | Set-Content -Encoding utf8 preview-notes.md
-          gh release create "v0.6.4-preview.1" "ScreenReaderAssist-win-x64.zip" --prerelease --title "Screen Reader Assist v0.6.4-preview.1 (experimental)" --notes-file preview-notes.md
+          gh release create "v0.6.5-preview.1" "ScreenReaderAssist-win-x64.zip" --prerelease --title "Screen Reader Assist v0.6.5-preview.1 (experimental)" --notes-file preview-notes.md
