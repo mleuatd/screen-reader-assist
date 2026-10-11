@@ -315,8 +315,13 @@ public sealed class MainForm : Form
             _lastRect=new Rectangle(estimate.X+bounds.X,estimate.Y+bounds.Y,estimate.Width,estimate.Height);
             using var first=whole.Clone(estimate,whole.PixelFormat);
             var text=await _ocr.RecognizeAsync(first,_settings.ocr.preferJapanese);
-            if(string.IsNullOrWhiteSpace(text))
-                text=await _ocr.RecognizeWithRegionFallbackAsync(whole,rel,_settings.ocr.preferJapanese,true);
+            if(string.IsNullOrWhiteSpace(text)) {
+                var localBounds=new Rectangle(Point.Empty,whole.Size);
+                var nearby=SelectionGeometry.AroundTap(rel,localBounds,650,490);
+                using var crop=whole.Clone(nearby,whole.PixelFormat);
+                text=await _ocr.RecognizeWithRegionFallbackAsync(crop,
+                    new Point(rel.X-nearby.X,rel.Y-nearby.Y),_settings.ocr.preferJapanese,true);
+            }
             if(string.IsNullOrWhiteSpace(text)) { Status("吹き出しの文字を認識できませんでした。");return; }
             _lastText=text;_last.Text=text;
             _speech.Speak(text,_settings.speech);

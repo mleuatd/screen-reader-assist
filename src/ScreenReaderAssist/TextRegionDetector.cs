@@ -69,9 +69,9 @@ public static class TextRegionDetector
             if(box.Width<36 || box.Height<24)continue;
             // Long text strips and vertical bubbles are both accepted.
             if(box.Width>Math.Min(image.Width,580) || box.Height>Math.Min(image.Height,490))continue;
-            double dx=Math.Max(box.Left-pointer.X,Math.Max(0,pointer.X-box.Right));
-            double dy=Math.Max(box.Top-pointer.Y,Math.Max(0,pointer.Y-box.Bottom));
-            double distance=Math.Sqrt(dx*dx+dy*dy);
+            double distanceX=Math.Max(box.Left-pointer.X,Math.Max(0,pointer.X-box.Right));
+            double distanceY=Math.Max(box.Top-pointer.Y,Math.Max(0,pointer.Y-box.Bottom));
+            double distance=Math.Sqrt(distanceX*distanceX+distanceY*distanceY);
             if(distance>Math.Max(160,Math.Min(320,Math.Max(image.Width,image.Height)*0.55)))continue;
             proposals.Add((box,distance+0.0001*box.Width*box.Height));
         }
