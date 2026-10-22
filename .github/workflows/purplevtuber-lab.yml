@@ -1,0 +1,74 @@
+name: PurpleVTuber reference and environment smoke test
+
+on:
+  push:
+    branches:
+      - purplevtuber-lab-20261023
+    paths:
+      - ".github/workflows/purplevtuber-lab.yml"
+      - "purplevtuber/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap-and-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout working branch
+        uses: actions/checkout@v4
+      - name: Python runtime
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install analysis dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "pillow>=10,<13" "numpy>=1.26,<3" "psd-tools>=1.10,<2" pytest
+      - name: Download official model JSON references (never private assets)
+        run: |
+          mkdir -p outputs/references
+          python - <<'PY'
+          import urllib.request,json,pathlib
+          root="https://raw.githubusercontent.com/Live2D/CubismWebSamples/develop/Samples/Resources/Hiyori/"
+          for n in ("Hiyori.model3.json","Hiyori.physics3.json","Hiyori.pose3.json","Hiyori.cdi3.json"):
+              with urllib.request.urlopen(root+n,timeout=30) as res:
+                  payload=res.read()
+              document=json.loads(payload)
+              pathlib.Path("outputs/references",n).write_bytes(payload)
+              print(n,"bytes:",len(payload),"fields:",list(document))
+          PY
+      - name: Validate official Live2D JSON shape
+        run: python purplevtuber/tools/verify_reference_models.py --dir outputs/references --out outputs/reference_report.json
+      - name: Create synthetic parted character for image-audit smoke test
+        run: |
+          python - <<'PY'
+          from PIL import Image,ImageDraw
+          from pathlib import Path
+          p=Path("outputs/demo_parts");p.mkdir(parents=True,exist_ok=True)
+          for i in range(4):
+              im=Image.new("RGBA",(128,128),(0,0,0,0))
+              d=ImageDraw.Draw(im)
+              d.ellipse((20+i*9,20,80+i*9,80),fill=(100+i*15,25,150,220))
+              im.save(p/f"test_part_{i:02}.png")
+          PY
+      - name: Run contact-sheet/inventory test
+        run: python purplevtuber/tools/audit_assets.py outputs/demo_parts --out outputs/contact_sheet_test
+      - name: Python and PSD library diagnostics
+        run: |
+          python - <<'PY'
+          import sys,numpy,PIL,psd_tools,json,pathlib
+          info={"python":sys.version,"numpy":numpy.__version__,"pillow":PIL.__version__,"psd_tools":getattr(psd_tools,"__version__","unknown"),"status":"dependencies_imported"}
+          pathlib.Path("outputs/environment.json").write_text(json.dumps(info,ensure_ascii=False,indent=2))
+          print(json.dumps(info))
+          PY
+      - name: Publish reference and smoke test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: purplevtuber-public-reference-and-test-report
+          path: outputs/
+          retention-days: 30
+          if-no-files-found: warn
