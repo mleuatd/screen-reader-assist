@@ -1,0 +1,48 @@
+{
+  "schema": "purplevtuber.reference.v1",
+  "notes": "Links are reference-only; artwork remains under its respective license. No private user artwork is included.",
+  "references": [
+    {
+      "name": "Official Hiyori runtime model",
+      "kind": "model3.json",
+      "url": "https://raw.githubusercontent.com/Live2D/CubismWebSamples/develop/Samples/Resources/Hiyori/Hiyori.model3.json",
+      "usage": "runtime file layout, parameter groups"
+    },
+    {
+      "name": "Official Hiyori physics",
+      "kind": "physics3.json",
+      "url": "https://raw.githubusercontent.com/Live2D/CubismWebSamples/develop/Samples/Resources/Hiyori/Hiyori.physics3.json",
+      "usage": "actual physics schema and hair examples"
+    },
+    {
+      "name": "Official Live2D physics schema",
+      "kind": "spec",
+      "url": "https://github.com/Live2D/CubismSpecs/blob/master/FileFormats/physics3.json.md",
+      "usage": "validate serialization"
+    },
+    {
+      "name": "PSD2Live",
+      "kind": "build tool",
+      "url": "https://github.com/tsunehimatoi/psd2live",
+      "usage": "rigging from correctly separated PSD or layout; GPLv3 licensing"
+    },
+    {
+      "name": "Official Mark PSD",
+      "kind": "user-owned reference copy in connected Dropbox",
+      "dropbox_path": "/ChatGPT/mark_free_Import_OFFICIAL_REFERENCE_20261023.psd",
+      "usage": "reference layered document structure; NOT derivative artwork"
+    },
+    {
+      "name": "Stage320 original",
+      "kind": "private model source",
+      "library_file": "PurpleVTuber_Stage320_Chat_Standalone_NoOverwrite.zip",
+      "usage": "rest pose and style reference"
+    },
+    {
+      "name": "R2",
+      "kind": "private model source",
+      "library_file": "PurpleVTuber_MVP_BULK_PLUS_20261022R2_CompletePackage.zip",
+      "usage": "audit only, not authoritative until compared"
+    }
+  ]
+}
