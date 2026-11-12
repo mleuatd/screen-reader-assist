@@ -54,6 +54,8 @@ public sealed class SpeechSettings
 }
 public sealed class OcrSettings
 {
+    // Offline PP-OCRv6 is used when its model files are bundled; otherwise Windows OCR.
+    public bool highAccuracyLocal { get; set; } = true;
     public bool copyToClipboard { get; set; } = false;
     public bool reuseLastRegion { get; set; } = false;
     public bool preferJapanese { get; set; } = true;
