@@ -9,6 +9,9 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - name: オフライン動作の監査（通信コードがあればリリースを停止）
+        shell: pwsh
+        run: ./scripts/Verify-OfflineRuntime.ps1
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
