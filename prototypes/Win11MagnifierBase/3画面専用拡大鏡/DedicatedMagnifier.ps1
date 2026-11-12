@@ -1,4 +1,4 @@
-# Windows 11 three-monitor dedicated magnifier launcher.
+﻿# Windows 11 three-monitor dedicated magnifier launcher.
 # Windows PowerShell 5.1 (64-bit), STA.
 $ErrorActionPreference = 'Stop'
 try {
@@ -11,7 +11,21 @@ try {
         throw '専用拡大鏡のソースファイルが見つかりません。'
     }
     Set-Location -LiteralPath $PSScriptRoot
-    Add-Type -Path @($path, $ocrPath) -ReferencedAssemblies @('System.Windows.Forms.dll','System.Drawing.dll','System.Speech.dll','UIAutomationClient.dll','UIAutomationTypes.dll','WindowsBase.dll') -ErrorAction Stop
+    # Resolve framework libraries through the GAC: bare DLL names do not
+    # reliably resolve on all supported Windows installations.
+    $refs = @()
+    foreach ($assemblyName in @('System.Windows.Forms','System.Drawing',
+        'System.Speech','UIAutomationClient','UIAutomationTypes','WindowsBase')) {
+        Add-Type -AssemblyName $assemblyName -ErrorAction Stop
+        $assembly = [AppDomain]::CurrentDomain.GetAssemblies() |
+            Where-Object { $_.GetName().Name -eq $assemblyName } |
+            Select-Object -First 1
+        if (-not $assembly -or -not $assembly.Location) {
+            throw ('Required .NET assembly missing: ' + $assemblyName)
+        }
+        $refs += $assembly.Location
+    }
+    Add-Type -Path @($path, $ocrPath) -ReferencedAssemblies $refs -ErrorAction Stop
     [Win11Magnifier.DedicatedMagnifierEntry]::Start()
 }
 catch {

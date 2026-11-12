@@ -487,8 +487,8 @@ namespace Win11Magnifier
             bar.Controls.Add(dragVoiceToggle);
 
             globalOcrToggle = new CheckBox();
-            globalOcrToggle.Text = "Alt＋ドラッグ：範囲読み上げ";
-            globalOcrToggle.AccessibleName = "他アプリがアクティブでも、Altを押しながら左ドラッグした範囲をOCRで読み上げる機能を切り替えます";
+            globalOcrToggle.Text = "Alt＋右／左ドラッグ：範囲読み上げ";
+            globalOcrToggle.AccessibleName = "他のアプリを操作中でもAltと右ドラッグ、または左ドラッグで囲んだ範囲をOCRで読み上げます";
             globalOcrToggle.Checked = globalOcrEnabled;
             globalOcrToggle.AutoSize = true;
             globalOcrToggle.Font = new Font("Yu Gothic UI", 11.5f);

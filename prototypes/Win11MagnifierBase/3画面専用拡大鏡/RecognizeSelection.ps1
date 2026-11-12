@@ -1,4 +1,4 @@
-# Windows PowerShell 5.1 only. Offline Japanese OCR using Windows.Media.Ocr.
+﻿# Windows PowerShell 5.1 only. Offline Japanese OCR using Windows.Media.Ocr.
 # Receives a temporary screen-capture PNG and writes UTF-8 OCR text.
 # No cloud connection, clipboard access, or third-party engine required.
 param(

@@ -1,0 +1,69 @@
+name: Compile 3-screen magnifier C# prototype
+on:
+  pull_request:
+    paths:
+      - 'prototypes/Win11MagnifierBase/**'
+      - '.github/workflows/magnifier-prototype-compile.yml'
+  push:
+    branches: [ main ]
+    paths:
+      - 'prototypes/Win11MagnifierBase/**'
+      - '.github/workflows/magnifier-prototype-compile.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compile-prototype:
+    name: PowerShell 5.1でC#試作コードをコンパイル
+    runs-on: windows-2022
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@v4
+      - name: 実際の起動スクリプトと同じ参照でC#コードをコンパイル
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not [Environment]::Is64BitProcess) { throw '64-bit PowerShell is required' }
+          $root = Join-Path (Get-Location) 'prototypes/Win11MagnifierBase'
+          $mainSource = Get-ChildItem -LiteralPath $root -File -Recurse -Filter 'DedicatedMagnifier.cs' | Select-Object -First 1
+          if (-not $mainSource) { throw 'Prototype C# source file missing' }
+          $sources = @(
+            $mainSource.FullName,
+            (Join-Path $mainSource.DirectoryName 'GlobalOcrSelection.cs')
+          )
+          # Resolve GAC references to physical paths. On CI images Add-Type does
+          # not always resolve a short DLL filename like UIAutomationClient.dll.
+          $refs = @()
+          foreach ($assemblyName in @(
+            'System.Windows.Forms', 'System.Drawing', 'System.Speech',
+            'UIAutomationClient', 'UIAutomationTypes', 'WindowsBase'
+          )) {
+            Add-Type -AssemblyName $assemblyName -ErrorAction Stop
+            $assembly = [AppDomain]::CurrentDomain.GetAssemblies() |
+              Where-Object { $_.GetName().Name -eq $assemblyName } |
+              Select-Object -First 1
+            if (-not $assembly -or -not $assembly.Location) {
+              throw ('Assembly missing: ' + $assemblyName)
+            }
+            $refs += $assembly.Location
+          }
+          Add-Type -Path $sources -ReferencedAssemblies $refs -ErrorAction Stop
+          # The class is internal, so normal PowerShell [type] conversion may
+          # not expose it even though the C# compiler succeeded.
+          $globalOcr = [AppDomain]::CurrentDomain.GetAssemblies() |
+            ForEach-Object { $_.GetType('Win11Magnifier.GlobalOcrSelection', $false) } |
+            Where-Object { $null -ne $_ } | Select-Object -First 1
+          if (-not $globalOcr) { throw 'Compiled GlobalOcrSelection type not found via reflection' }
+          $psSources = Get-ChildItem -LiteralPath $mainSource.DirectoryName -Filter '*.ps1' -File
+          foreach ($scriptFile in $psSources) {
+            $tokens = $null
+            $errors = $null
+            $null = [System.Management.Automation.Language.Parser]::ParseFile(
+              $scriptFile.FullName, [ref]$tokens, [ref]$errors)
+            if ($errors.Count -gt 0) { throw ('PowerShell parse errors: ' + $scriptFile.Name) }
+          }
+          Write-Host 'C# compilation and PowerShell 5.1 syntax validation successful (OCR/GUI operation not runtime-tested).'
