@@ -35,18 +35,23 @@ jobs:
             $mainSource.FullName,
             (Join-Path $mainSource.DirectoryName 'GlobalOcrSelection.cs')
           )
-          # Locate the framework assembly first: bare System.Speech.dll is not
-          # resolved by Add-Type on every GitHub Windows runner image.
-          Add-Type -AssemblyName 'System.Speech' -ErrorAction Stop
-          $speechAssembly = [System.Speech.Synthesis.SpeechSynthesizer].Assembly.Location
-          Add-Type -Path $sources -ReferencedAssemblies @(
-            'System.Windows.Forms.dll',
-            'System.Drawing.dll',
-            $speechAssembly,
-            'UIAutomationClient.dll',
-            'UIAutomationTypes.dll',
-            'WindowsBase.dll'
-          ) -ErrorAction Stop
+          # Resolve GAC references to physical paths. On CI images Add-Type does
+          # not always resolve a short DLL filename like UIAutomationClient.dll.
+          $refs = @()
+          foreach ($assemblyName in @(
+            'System.Windows.Forms', 'System.Drawing', 'System.Speech',
+            'UIAutomationClient', 'UIAutomationTypes', 'WindowsBase'
+          )) {
+            Add-Type -AssemblyName $assemblyName -ErrorAction Stop
+            $assembly = [AppDomain]::CurrentDomain.GetAssemblies() |
+              Where-Object { $_.GetName().Name -eq $assemblyName } |
+              Select-Object -First 1
+            if (-not $assembly -or -not $assembly.Location) {
+              throw ('Assembly missing: ' + $assemblyName)
+            }
+            $refs += $assembly.Location
+          }
+          Add-Type -Path $sources -ReferencedAssemblies $refs -ErrorAction Stop
           if (-not ('Win11Magnifier.GlobalOcrSelection' -as [type])) {
             throw 'GlobalOcrSelection missing after compilation'
           }
