@@ -229,3 +229,12 @@ Web設定画面は速度のスライダーを大きく表示し、遅い（-10�
 - `Ctrl+Alt+R`はWindows標準拡大鏡の「レンズのサイズを変更」にも割り当てられます。ショートカットが競合するとアプリ側の登録ができないため、`ScreenReaderAssist.log`のショートカット登録状況を確認してください。競合時は通知領域の「範囲を読み上げ」メニューでも起動できます。<https://support.microsoft.com/ja-jp/accessibility/windows/windows-keyboard-shortcuts-for-accessibility>
 - Windows 11での拡大はWindows標準拡大鏡を推奨。アプリのカーソル自動読み上げ、手動OCR、漫画OCR、音声読み上げはそのまま維持しています。
 - GitHub Actionsはモック画面変換ドライバーを使用した復旧ロジックのテストです。実際のWindows全画面表示の復旧や強制終了についてはユーザーのWindows実機で未検証です。
+
+
+## 3画面拡大鏡の別系統試作（2026-11-12）
+
+[Win11MagnifierBase v0.5 のソースコードと仕様書](prototypes/Win11MagnifierBase/README.md) を `prototypes/Win11MagnifierBase/` に保存しています。
+
+- 画面3を拡大専用に使うウィンドウ、ドラッグ操作、Alt＋矩形OCR読み上げなどの**試作実装**。
+- 本リポジトリの `src/ScreenReaderAssist/` と**別系統**であり、統合・置き換えはしていません。
+- **Windows 11実機の動作検証は未完了**。配布済みの安定版・正式リリースではありません。
