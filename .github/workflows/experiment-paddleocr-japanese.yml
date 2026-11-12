@@ -1,0 +1,65 @@
+name: Experiment Japanese OCR - PaddleOCR v6
+on:
+  pull_request:
+    paths:
+      - 'experiments/ocr/**'
+      - '.github/workflows/experiment-paddleocr-japanese.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  paddleocr-japanese:
+    name: 日本語OCRの精度・速度 (${{ matrix.model }})
+    runs-on: windows-2025
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        model: [small, medium]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install open-source OCR and offline inference engine
+        shell: pwsh
+        timeout-minutes: 15
+        run: |
+          python -m pip install --upgrade pip
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install "paddleocr==3.7.0" "onnxruntime>=1.22,<2" "pillow>=10,<13"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Japanese text accuracy and first/warm response
+        shell: pwsh
+        timeout-minutes: 17
+        env:
+          PADDLE_PDX_MODEL_SOURCE: "bos"
+        run: |
+          python experiments/ocr/evaluate_paddleocr_japanese.py --model "${{ matrix.model }}" --summary "paddleocr-japanese-${{ matrix.model }}.json"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Record comparison summary
+        if: always()
+        shell: pwsh
+        run: |
+          $file = 'paddleocr-japanese-${{ matrix.model }}.json'
+          if (Test-Path $file) {
+            $r = Get-Content $file -Raw -Encoding UTF8 | ConvertFrom-Json
+            Add-Content $env:GITHUB_STEP_SUMMARY "## 日本語OCR $($r.model)"
+            Add-Content $env:GITHUB_STEP_SUMMARY "初期化秒数: $($r.init_seconds)"
+            Add-Content $env:GITHUB_STEP_SUMMARY '|条件|完全一致|文字誤り率|初回ms|2回目以降中央値ms|'
+            Add-Content $env:GITHUB_STEP_SUMMARY '|---|---|---|---|---|'
+            foreach ($x in $r.results) {
+              Add-Content $env:GITHUB_STEP_SUMMARY "|$($x.variant)|$($x.exact)|$($x.character_error_rate)|$($x.cold_ms)|$($x.warm_median_ms)|"
+            }
+            Add-Content $env:GITHUB_STEP_SUMMARY '合成した日本語UI画像のみで測定。実際のゲーム画面画像はアップロードしていないため、同一精度を保証しない。'
+          } else {
+            Add-Content $env:GITHUB_STEP_SUMMARY '日本語OCRのモデル取得または実行に失敗。結果は未検証。'
+          }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: paddleocr-japanese-${{ matrix.model }}
+          path: paddleocr-japanese-${{ matrix.model }}.json
+          if-no-files-found: ignore
