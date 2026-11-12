@@ -51,6 +51,17 @@ jobs:
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '### 日本語OCR：日本語文字でのスモークテスト成功'
       - name: Publish portable zip input
         run: dotnet publish src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
+      - name: 同梱型の日本語高精度OCRモデルを公式配布元からビルド時に取得
+        shell: pwsh
+        timeout-minutes: 15
+        run: ./scripts/Bundle-OfflineJapaneseModels.ps1 -Destination publish
+      - name: 配布モデルだけを使ったC#日本語OCR実動作テスト
+        shell: pwsh
+        timeout-minutes: 8
+        run: |
+          $models=Join-Path (Resolve-Path publish).Path 'models'
+          dotnet run --project tests/ScreenReaderAssist.Tests/ScreenReaderAssist.Tests.csproj -c Release --no-build --no-restore -- --paddle-ja $models
+          if ($LASTEXITCODE -ne 0) { throw '日本語ローカルOCRの検証に失敗しました。ZIPは作成しません。' }
       - name: Add portable INI beside the EXE
         shell: pwsh
         run: |
