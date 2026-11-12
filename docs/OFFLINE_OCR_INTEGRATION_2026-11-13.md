@@ -24,7 +24,7 @@ Googleレンズで確認できた日本語読み取り精度を、Windows 11 の
 - WindowsのC#アプリとロジックテストをビルド。
 - `scripts/Verify-OfflineRuntime.ps1`で製品コード中の通信API・HTTP URL・テレメトリーを検査。
 - Windows CIで日本語ONNXモデルを`publish/models`に同梱。
-- `--paddle-ja publish/models`で日本語の短い2行を3種類の表示条件で全文一致検証。
+- `--paddle-ja publish/models`で日本語の短い2行を4種類の表示条件（緑色枠・半透明のゲーム風背景を含む）で全文一致検証。
 - 実際の`OcrService`経由でも同じ文章が認識できるか検証。
 - モデルが存在しない状態でも自動ダウンロードせずWindows OCRへフォールバックできることを確認。
 - Windows用のZIPと緊急画面復旧スクリプトを生成。
