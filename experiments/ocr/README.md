@@ -29,3 +29,16 @@ Windows環境のPython/ONNX Runtimeで、オープンソースのPP-OCRv6 small/
 - https://github.com/PaddlePaddle/PaddleOCR
 - https://www.paddleocr.ai/main/en/version3.x/pipeline_usage/OCR.html
 - https://developers.google.com/ml-kit/vision/text-recognition/v2/android?hl=ja
+
+## .NET 10本体へ統合する際のC#候補
+- [meloht/RapidOCRSharpOnnx](https://github.com/meloht/RapidOCRSharpOnnx) v1.4.0：NuGet提供、Apache-2.0、.NET 10対応、PP-OCRv6の日本語モデルをONNX Runtimeで動かせるC#実装。Pythonの常駐を避けられる可能性がある。
+- ただし、このパッケージのモデルファイル・OpenCV・ONNX実行環境を含めた容量、CPU/RAM、Windows 11上の初期化と連続認識速度は未測定。NuGetから入るコードと、モデルの利用規約はそれぞれ確認する。
+- 本体は当面Windows標準OCRの動作を維持。別実装を採用するのは、同じ日本語画像での精度と反応時間がよくなり、Alt＋ドラッグ・読み上げ・復旧動作が維持できると確認したときに限る。
+
+## 読み上げまでの二段階処理
+1. モデルは可能ならアプリ起動時に非同期で読み込んでおき、ドラッグ終了時に初回起動待ちが発生しないようにする。
+2. 選択領域だけ切り出し、認識できた最初の日本語文章を速やかに読み上げる。
+3. 誤字の疑いがある場合だけ、別モデル・画質補正をバックグラウンドで試す。原文が不確かなまま勝手な文章へ書き換えない。
+4. 精度とレイテンシを実測し、遅い上位モデルを最初から必須にしない。
+
+この処理方針は現段階では設計案であり、まだメインアプリの動作変更ではない。
