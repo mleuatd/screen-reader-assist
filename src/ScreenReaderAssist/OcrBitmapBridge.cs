@@ -27,10 +27,6 @@ public static class OcrBitmapBridge
             {
                 // GDI+ could not lock the bitmap. Keep the original behavior.
             }
-            catch(COMException)
-            {
-                // Some Windows runtimes cannot use the direct buffer API.
-            }
             catch(NotSupportedException)
             {
                 // Preserve the original image-conversion implementation.
