@@ -93,8 +93,8 @@ using(var blank=new Bitmap(480,220)) {
 using(var sample=new Bitmap(480,220)) {
     using(var g=Graphics.FromImage(sample)) {
         g.Clear(Color.White);
-        using var f=new Font("Arial",26,FontStyle.Bold);
-        g.DrawString("READ ME 123",f,Brushes.Black,new PointF(70,72));
+        using var f=new Font("Yu Gothic",26,FontStyle.Bold);
+        g.DrawString("日本語の文字１２３",f,Brushes.Black,new PointF(70,72));
     }
     var regions=TextRegionDetector.Propose(sample,new Point(160,90));
     Check(regions.Count>0,"edge-based candidate found around rendered text");
@@ -171,7 +171,7 @@ using(var oldZoom=new MagnificationService()) {
     Check(!oldZoom.Start(new Point(100,100),3.0f) && !oldZoom.Active,
           "deprecated full-screen zoom cannot alter the desktop even if called");
 }
-Console.WriteLine("Finished all logic smoke tests. OCR and live GUI tests NOT executed by this test suite.");
+Console.WriteLine("日本語文字画像による領域検出ロジックテストは完了。実際の日本語OCR・日本語音声・GUI動作は別途検証が必要です。");
 
 sealed class FakeDisplayTransform : MagnificationRecovery.IDriver
 {
