@@ -30,7 +30,7 @@ var parsedIni=PortableIni.Parse(sampleIni);
 Check(parsedIni.reading.mode==ReadingModes.Manga && parsedIni.reading.dwellMilliseconds==850,"portable INI reading mode and dwell round trip");
 Check(parsedIni.speech.voiceName=="日本語 \"A=B\"" && parsedIni.speech.rate==3 && parsedIni.speech.volume==55,"portable UTF-8 INI Japanese voice and settings round trip");
 Check(parsedIni.ocr.highAccuracyLocal, "old INI continues to enable bundled offline OCR by default");
-Check(!PortableIni.Parse("[文字認識]\\n高精度ローカルOCRを使用=いいえ\\n").ocr.highAccuracyLocal,
+Check(!PortableIni.Parse("[文字認識]\n高精度ローカルOCRを使用=いいえ\n").ocr.highAccuracyLocal,
     "Japanese offline OCR toggle can be disabled without changing existing keys");
 Check(PortableIni.Write(new AppSettings()).Contains("高精度ローカルOCRを使用=はい"),
     "portable INI exports explicit offline OCR choice");
