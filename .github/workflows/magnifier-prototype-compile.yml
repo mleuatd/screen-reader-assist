@@ -1,0 +1,47 @@
+name: Compile 3-screen magnifier C# prototype
+on:
+  pull_request:
+    paths:
+      - 'prototypes/Win11MagnifierBase/**'
+      - '.github/workflows/magnifier-prototype-compile.yml'
+  push:
+    branches: [ main ]
+    paths:
+      - 'prototypes/Win11MagnifierBase/**'
+      - '.github/workflows/magnifier-prototype-compile.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compile-prototype:
+    name: PowerShell 5.1でC#試作コードをコンパイル
+    runs-on: windows-2025
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@v4
+      - name: 実際の起動スクリプトと同じ参照でC#コードをコンパイル
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not [Environment]::Is64BitProcess) { throw '64-bit PowerShell is required' }
+          $root = Join-Path (Get-Location) 'prototypes/Win11MagnifierBase/3画面専用拡大鏡'
+          $sources = @(
+            (Join-Path $root 'DedicatedMagnifier.cs'),
+            (Join-Path $root 'GlobalOcrSelection.cs')
+          )
+          Add-Type -Path $sources -ReferencedAssemblies @(
+            'System.Windows.Forms.dll',
+            'System.Drawing.dll',
+            'System.Speech.dll',
+            'UIAutomationClient.dll',
+            'UIAutomationTypes.dll',
+            'WindowsBase.dll'
+          ) -ErrorAction Stop
+          if (-not ('Win11Magnifier.GlobalOcrSelection' -as [type])) {
+            throw 'GlobalOcrSelection missing after compilation'
+          }
+          Write-Host 'C# compilation successful (Japanese OCR and GUI gestures are NOT runtime-tested).'
