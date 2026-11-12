@@ -28,10 +28,12 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           if (-not [Environment]::Is64BitProcess) { throw '64-bit PowerShell is required' }
-          $root = Join-Path (Get-Location) 'prototypes/Win11MagnifierBase/3画面専用拡大鏡'
+          $root = Join-Path (Get-Location) 'prototypes/Win11MagnifierBase'
+          $mainSource = Get-ChildItem -LiteralPath $root -File -Recurse -Filter 'DedicatedMagnifier.cs' | Select-Object -First 1
+          if (-not $mainSource) { throw 'Prototype C# source file missing' }
           $sources = @(
-            (Join-Path $root 'DedicatedMagnifier.cs'),
-            (Join-Path $root 'GlobalOcrSelection.cs')
+            $mainSource.FullName,
+            (Join-Path $mainSource.DirectoryName 'GlobalOcrSelection.cs')
           )
           Add-Type -Path $sources -ReferencedAssemblies @(
             'System.Windows.Forms.dll',
