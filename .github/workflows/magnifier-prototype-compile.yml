@@ -17,7 +17,7 @@ permissions:
 jobs:
   compile-prototype:
     name: PowerShell 5.1でC#試作コードをコンパイル
-    runs-on: windows-2025
+    runs-on: windows-2022
     timeout-minutes: 10
     defaults:
       run:
@@ -35,10 +35,14 @@ jobs:
             $mainSource.FullName,
             (Join-Path $mainSource.DirectoryName 'GlobalOcrSelection.cs')
           )
+          # Locate the framework assembly first: bare System.Speech.dll is not
+          # resolved by Add-Type on every GitHub Windows runner image.
+          Add-Type -AssemblyName 'System.Speech' -ErrorAction Stop
+          $speechAssembly = [System.Speech.Synthesis.SpeechSynthesizer].Assembly.Location
           Add-Type -Path $sources -ReferencedAssemblies @(
             'System.Windows.Forms.dll',
             'System.Drawing.dll',
-            'System.Speech.dll',
+            $speechAssembly,
             'UIAutomationClient.dll',
             'UIAutomationTypes.dll',
             'WindowsBase.dll'
