@@ -49,11 +49,13 @@ public sealed class OcrService
     }
     private static async Task<OcrResult> RecognizeResultAsync(Bitmap bmp, bool preferJapanese)
     {
+        var perfWatch=System.Diagnostics.Stopwatch.StartNew();
         OcrEngine? engine = null;
         if (preferJapanese && OcrEngine.IsLanguageSupported(new Language("ja-JP")))
             engine = OcrEngine.TryCreateFromLanguage(new Language("ja-JP"));
         engine ??= OcrEngine.TryCreateFromUserProfileLanguages();
         if (engine is null) throw new InvalidOperationException("利用できるWindows OCR言語がありません。Windowsの日本語言語機能を確認してください。");
+        long engineReadyMs=perfWatch.ElapsedMilliseconds;
         // Windows OCR imposes a maximum bitmap dimension; scale large captures down.
         Bitmap input=bmp;
         Bitmap? resized=null;
@@ -75,7 +77,13 @@ public sealed class OcrService
         stream.Seek(0);
         var decoder=await BitmapDecoder.CreateAsync(stream);
         using var bitmap=await decoder.GetSoftwareBitmapAsync(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
+        long bitmapReadyMs=perfWatch.ElapsedMilliseconds;
         var result=await engine.RecognizeAsync(bitmap);
+        long totalMs=perfWatch.ElapsedMilliseconds;
+        // Record slow OCR stages without storing image content, OCR text, or cursor position.
+        // Avoid per-call logging overhead on the fast path.
+        if(totalMs>=250)
+            DiagnosticLog.Info("OCR性能",$"OCR初期化={engineReadyMs}ms、画像準備={bitmapReadyMs-engineReadyMs}ms、認識={totalMs-bitmapReadyMs}ms、合計={totalMs}ms、入力={bmp.Width}x{bmp.Height}px。");
         return result;
     }
 }
