@@ -17,6 +17,19 @@ jobs:
         run: |
           dotnet run --project tests/ScreenReaderAssist.Tests/ScreenReaderAssist.Tests.csproj -c Release
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Do not substitute English results for Japanese OCR/TTS verification.
+          foreach ($mode in @('--benchmark-tts-ja', '--ocr-ja')) {
+            dotnet run --project tests/ScreenReaderAssist.Tests/ScreenReaderAssist.Tests.csproj -c Release --no-build -- $mode
+            $code = $LASTEXITCODE
+            if ($code -eq 2) {
+              Write-Warning "日本語テスト $mode は未検証（日本語音声・OCR機能がありません）。英語で代替しません。"
+              Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "日本語テスト $mode ：未検証（対応する日本語機能がランナーにありません）"
+            } elseif ($code -ne 0) {
+              throw "日本語テスト $mode 失敗（終了コード $code）"
+            } else {
+              Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "日本語テスト $mode ：合格"
+            }
+          }
           dotnet publish src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           # Match the CI artifact: include the portable configuration and emergency reset.

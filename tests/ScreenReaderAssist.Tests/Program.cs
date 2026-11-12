@@ -2,9 +2,10 @@ using ScreenReaderAssist;
 using System.Drawing;
 using System.Text.Json;
 
-if(args.Contains("--benchmark-tts",StringComparer.OrdinalIgnoreCase)) {NativeTtsBenchmark.Run();return;}
+if(args.Contains("--benchmark-tts",StringComparer.OrdinalIgnoreCase)) {Environment.ExitCode=JapaneseTtsBenchmark.Run();return;}
 if(args.Contains("--benchmark-tts-ja",StringComparer.OrdinalIgnoreCase)) {Environment.ExitCode=JapaneseTtsBenchmark.Run();return;}
 if(args.Contains("--benchmark-onecore-ja",StringComparer.OrdinalIgnoreCase)) {Environment.ExitCode=await OneCoreJapaneseBenchmark.RunAsync();return;}
+if(args.Contains("--ocr-ja",StringComparer.OrdinalIgnoreCase)) {Environment.ExitCode=await JapaneseOcrSmokeTest.RunAsync();return;}
 
 static void Check(bool condition,string message) {if(!condition) throw new Exception("FAIL: "+message);Console.WriteLine("PASS: "+message);}
 var settings=AppSettings.Normalize(new AppSettings {speech = new SpeechSettings{rate=99,volume=-12}, magnifier=new MagnifierSettings{zoom=30}});
@@ -93,8 +94,8 @@ using(var blank=new Bitmap(480,220)) {
 using(var sample=new Bitmap(480,220)) {
     using(var g=Graphics.FromImage(sample)) {
         g.Clear(Color.White);
-        using var f=new Font("Arial",26,FontStyle.Bold);
-        g.DrawString("READ ME 123",f,Brushes.Black,new PointF(70,72));
+        using var f=new Font("Yu Gothic",26,FontStyle.Bold);
+        g.DrawString("日本語の文字１２３",f,Brushes.Black,new PointF(70,72));
     }
     var regions=TextRegionDetector.Propose(sample,new Point(160,90));
     Check(regions.Count>0,"edge-based candidate found around rendered text");
@@ -171,7 +172,7 @@ using(var oldZoom=new MagnificationService()) {
     Check(!oldZoom.Start(new Point(100,100),3.0f) && !oldZoom.Active,
           "deprecated full-screen zoom cannot alter the desktop even if called");
 }
-Console.WriteLine("Finished all logic smoke tests. OCR and live GUI tests NOT executed by this test suite.");
+Console.WriteLine("日本語文字画像による領域検出ロジックテストは完了。実際の日本語OCR・日本語音声・GUI動作は別途検証が必要です。");
 
 sealed class FakeDisplayTransform : MagnificationRecovery.IDriver
 {

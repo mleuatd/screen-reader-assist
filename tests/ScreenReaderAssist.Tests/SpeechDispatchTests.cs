@@ -40,7 +40,7 @@ internal static class SpeechDispatchTests
     {
         var e=new FakeEngine();
         using var speech=new SpeechService(e);
-        speech.Speak("one",new SpeechSettings{voiceName="English",rate=-1,volume=100});
+        speech.Speak("最初の読み上げです。",new SpeechSettings{voiceName="English",rate=-1,volume=100});
         Assert(e.VoiceSelects==0,"TTS default English voice does not require select");
         speech.Speak("二",new SpeechSettings{voiceName="Japanese",rate=-1,volume=100});
         speech.Speak("三",new SpeechSettings{voiceName="Japanese",rate=-1,volume=100});
@@ -57,7 +57,7 @@ internal static class SpeechDispatchTests
         service.Speak("  ",new SpeechSettings());
         Assert(e.CancelCalls==0 && e.SpeakCalls==0,"TTS blank input performs no native work");
         e.Paused=true;
-        service.Speak("resume",new SpeechSettings());
+        service.Speak("読み上げを再開します。",new SpeechSettings());
         Assert(e.ResumeCalls==1 && !e.Paused,"TTS new text resumes paused playback before speaking");
         service.Stop();
         Assert(e.CancelCalls==2,"TTS Stop cancels current playback");
@@ -75,7 +75,7 @@ internal static class SpeechDispatchTests
         var timer=Stopwatch.StartNew();
         // The benchmark measures only dispatch cost; exclude file-system diagnostic work.
         DiagnosticLog.Enabled=false;
-        try {for(int i=0;i<requests;i++)service.Speak("Recognized text for fast speech dispatch",settings);}
+        try {for(int i=0;i<requests;i++)service.Speak("日本語の短い文章を素早く読み上げます。",settings);}
         finally {DiagnosticLog.Enabled=true;}
         timer.Stop();
         Assert(e.SpeakCalls==requests,"TTS synthetic 10000-request dispatch count");
