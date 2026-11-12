@@ -77,6 +77,10 @@ public static class PortableIni
                 case ("音声読み上げ","使用する音声名"):
                 case ("speech","voicename"):
                     config.speech.voiceName=val;break;
+                case ("文字認識","高精度ローカルocrを使用"):
+                case ("ocr","highaccuracylocal"):
+                    if(TryToggle(val,out var highAccuracy))config.ocr.highAccuracyLocal=highAccuracy;
+                    break;
                 case ("文字認識","認識した文字をコピー"):
                 case ("ocr","copytoclipboard"):
                     if(TryToggle(val,out var copy))config.ocr.copyToClipboard=copy;
@@ -140,6 +144,8 @@ public static class PortableIni
         sb.AppendLine("使用する音声名=\""+safeVoice+"\"");
         sb.AppendLine();
         sb.AppendLine("[文字認識]");
+        sb.AppendLine("; 日本語モデルが同梱されている場合だけPC内で実行。ネットワーク通信なし。");
+        sb.AppendLine("高精度ローカルOCRを使用="+Toggle(s.ocr.highAccuracyLocal));
         sb.AppendLine("認識した文字をコピー="+Toggle(s.ocr.copyToClipboard));
         sb.AppendLine("前回の読み取り範囲を再利用="+Toggle(s.ocr.reuseLastRegion));
         sb.AppendLine("日本語の文字認識を優先="+Toggle(s.ocr.preferJapanese));
