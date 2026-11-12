@@ -33,6 +33,19 @@ jobs:
           }
           if ($code -ne 0) { throw "日本語SAPI音声の性能テスト失敗（終了コード：$code）" }
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '### 日本語SAPI音声：性能テスト完了（波形合成のみ・実際の発声遅延は未測定）'
+      - name: 日本語Windows OCR統合スモークテスト（日本語OCR未導入は未検証）
+        shell: pwsh
+        timeout-minutes: 3
+        run: |
+          dotnet run --project tests/ScreenReaderAssist.Tests/ScreenReaderAssist.Tests.csproj -c Release --no-build -- --ocr-ja
+          $code = $LASTEXITCODE
+          if ($code -eq 2) {
+            Write-Warning 'このWindowsランナーには日本語OCRがありません。日本語OCRの実動作は未検証です。'
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '### 日本語OCR：未検証（ランナーに日本語OCR機能なし）'
+            exit 0
+          }
+          if ($code -ne 0) { throw "日本語OCRテスト失敗（終了コード：$code）" }
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '### 日本語OCR：日本語文字でのスモークテスト成功'
       - name: Publish portable zip input
         run: dotnet publish src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
       - name: Add portable INI beside the EXE
