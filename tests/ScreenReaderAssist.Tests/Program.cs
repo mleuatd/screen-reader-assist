@@ -6,6 +6,11 @@ if(args.Contains("--benchmark-tts",StringComparer.OrdinalIgnoreCase)) {Environme
 if(args.Contains("--benchmark-tts-ja",StringComparer.OrdinalIgnoreCase)) {Environment.ExitCode=JapaneseTtsBenchmark.Run();return;}
 if(args.Contains("--benchmark-onecore-ja",StringComparer.OrdinalIgnoreCase)) {Environment.ExitCode=await OneCoreJapaneseBenchmark.RunAsync();return;}
 if(args.Contains("--ocr-ja",StringComparer.OrdinalIgnoreCase)) {Environment.ExitCode=await JapaneseOcrSmokeTest.RunAsync();return;}
+if(args.Length==2 && args[0].Equals("--paddle-ja",StringComparison.OrdinalIgnoreCase))
+{
+    Environment.ExitCode=await OfflinePaddleOcrTests.RunAsync(args[1]);
+    return;
+}
 
 static void Check(bool condition,string message) {if(!condition) throw new Exception("FAIL: "+message);Console.WriteLine("PASS: "+message);}
 var settings=AppSettings.Normalize(new AppSettings {speech = new SpeechSettings{rate=99,volume=-12}, magnifier=new MagnifierSettings{zoom=30}});
@@ -24,6 +29,11 @@ var sampleIni=PortableIni.Write(new AppSettings {
 var parsedIni=PortableIni.Parse(sampleIni);
 Check(parsedIni.reading.mode==ReadingModes.Manga && parsedIni.reading.dwellMilliseconds==850,"portable INI reading mode and dwell round trip");
 Check(parsedIni.speech.voiceName=="日本語 \"A=B\"" && parsedIni.speech.rate==3 && parsedIni.speech.volume==55,"portable UTF-8 INI Japanese voice and settings round trip");
+Check(parsedIni.ocr.highAccuracyLocal, "old INI continues to enable bundled offline OCR by default");
+Check(!PortableIni.Parse("[文字認識]\n高精度ローカルOCRを使用=いいえ\n").ocr.highAccuracyLocal,
+    "Japanese offline OCR toggle can be disabled without changing existing keys");
+Check(PortableIni.Write(new AppSettings()).Contains("高精度ローカルOCRを使用=はい"),
+    "portable INI exports explicit offline OCR choice");
 Check(parsedIni.ocr.copyToClipboard && !parsedIni.ocr.preferJapanese && parsedIni.magnifier.zoom==2.5f,"portable INI OCR and magnifier settings round trip");
 Check(PortableIni.Parse("; comment\n[reading]\nmode=selection\nunknownKey=value\n").reading.mode==ReadingModes.Selection,"INI accepts comments and unknown keys");
 Check(PortableIni.Parse("[reading]\ndwellMilliseconds=99999\nmode=invalid\n").reading.dwellMilliseconds==2000,"INI numeric limits enforced");

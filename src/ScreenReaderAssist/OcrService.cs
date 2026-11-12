@@ -6,8 +6,14 @@ using Windows.Globalization;
 using Windows.Storage.Streams;
 namespace ScreenReaderAssist;
 
-public sealed class OcrService
+public sealed class OcrService : IDisposable
 {
+    private readonly OfflinePaddleOcr _enhanced;
+    public OcrService(string? modelDirectory=null) { _enhanced=new OfflinePaddleOcr(modelDirectory); }
+    public bool UseHighAccuracyLocal {get;set;}=true;
+    public string EnhancedAvailability => _enhanced.AvailabilityText;
+    public Task WarmUpAsync()=>UseHighAccuracyLocal?_enhanced.WarmUpAsync():Task.CompletedTask;
+    public void Dispose()=>_enhanced.Dispose();
     /// <summary>
     /// If ordinary OCR misses a cursor target, search locally for text-like boundaries,
     /// enlarge/contrast-correct a limited number of candidate areas and retry Windows OCR.
@@ -29,6 +35,14 @@ public sealed class OcrService
     }
     public async Task<string> RecognizeAsync(Bitmap bmp, bool preferJapanese)
     {
+        // Fast first pass uses the local Japanese ONNX model, if shipped and enabled.
+        // Never contact a remote service, even when the model is absent or broken.
+        if(UseHighAccuracyLocal && preferJapanese)
+        {
+            var local=await _enhanced.RecognizeAsync(bmp);
+            if(!string.IsNullOrWhiteSpace(local))return local;
+        }
+        // Preserve the established Windows Japanese OCR behavior as fallback.
         var result=await RecognizeResultAsync(bmp,preferJapanese);
         return result.Text?.Trim() ?? "";
     }

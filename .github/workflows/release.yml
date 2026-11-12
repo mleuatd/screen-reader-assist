@@ -35,6 +35,12 @@ jobs:
           }
           dotnet publish src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Build-only download. Windows application itself never contacts a server.
+          ./scripts/Bundle-OfflineJapaneseModels.ps1 -Destination publish
+          if ($LASTEXITCODE -ne 0) { throw 'Offline Japanese models could not be bundled.' }
+          $modelFolder=Join-Path (Resolve-Path publish).Path 'models'
+          dotnet run --project tests/ScreenReaderAssist.Tests/ScreenReaderAssist.Tests.csproj -c Release --no-build --no-restore -- --paddle-ja $modelFolder
+          if ($LASTEXITCODE -ne 0) { throw 'Japanese offline OCR regression failed; release halted.' }
           # Match the CI artifact: include the portable configuration and emergency reset.
           Copy-Item -Path settings.ini -Destination publish/settings.ini -Force
           Copy-Item -Path ResetScreen.cmd -Destination publish/ResetScreen.cmd -Force

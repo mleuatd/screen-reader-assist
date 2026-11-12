@@ -16,6 +16,10 @@ public sealed class MainForm : Form
     private readonly CheckBox _triple = new() { Text="危険な全画面拡大は一時停止中。Alt+Shift+Zは画面の復旧用", AutoSize=true, Enabled=false };
     private readonly CheckBox _copy = new() { Text="認識した文字をクリップボードへコピー", AutoSize=true };
     private readonly CheckBox _japanese = new() { Text="日本語OCRを優先", AutoSize=true };
+    private readonly CheckBox _highAccuracy = new() {
+        Text="高精度の日本語OCRを使う（完全オフライン・モデル同梱）",
+        AutoSize=true,AccessibleName="高精度の日本語OCRを使う。通信しません"
+    };
     private readonly Label _status = new() { Text="準備完了", AutoSize=false, Width=540, Height=60, AccessibleName="現在の状態", AutoEllipsis=true };
     private readonly TextBox _last = new() { Multiline=true, ReadOnly=true, ScrollBars=ScrollBars.Vertical, Height=110, Dock=DockStyle.Fill, AccessibleName="最後に認識した文章" };
     private Rectangle? _lastRect;
@@ -97,6 +101,7 @@ public sealed class MainForm : Form
         _diagnosticEvents.SelectionStart=_diagnosticEvents.TextLength;
         _diagnosticEvents.ScrollToCaret();
         LoadControls();
+        _ = _ocr.WarmUpAsync(); // Background-only; no delay on the first Windows Forms frame.
         _cursorTimer.Tick+=CursorTimerTick;
         _pointerMovedAt=Environment.TickCount64;
         _cursorTimer.Start();
@@ -158,10 +163,10 @@ public sealed class MainForm : Form
     }
     private void BuildForm()
     {
-        var panel=new TableLayoutPanel { Dock=DockStyle.Fill,Padding=new Padding(18),AutoScroll=true,ColumnCount=2,RowCount=17 };
+        var panel=new TableLayoutPanel { Dock=DockStyle.Fill,Padding=new Padding(18),AutoScroll=true,ColumnCount=2,RowCount=18 };
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,185));
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
-        for(int i=0;i<16;i++) panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        for(int i=0;i<17;i++) panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         panel.RowStyles.Add(new RowStyle(SizeType.Percent,100));
         Controls.Add(panel);
         int row=0;
@@ -179,6 +184,7 @@ public sealed class MainForm : Form
         Add("拡大倍率（現在は無効）",_zoom,row++);
         Add("設定",_triple,row++);
         Add("OCR",_japanese,row++);
+        Add("OCR",_highAccuracy,row++);
         Add("OCR",_copy,row++);
         var buttons=new FlowLayoutPanel {AutoSize=true,WrapContents=true,Dock=DockStyle.Fill};
         AddButton(buttons,"設定を保存",()=>SaveControls());
@@ -259,6 +265,9 @@ public sealed class MainForm : Form
         _volume.Value=_settings.speech.volume;
         _zoom.Value=(decimal)_settings.magnifier.zoom*10;
         _japanese.Checked=_settings.ocr.preferJapanese;
+        _highAccuracy.Checked=_settings.ocr.highAccuracyLocal;
+        _ocr.UseHighAccuracyLocal=_settings.ocr.highAccuracyLocal;
+        _highAccuracy.Text=_ocr.EnhancedAvailability+" / 高精度OCRを使用";
         _copy.Checked=_settings.ocr.copyToClipboard;
         _triple.Checked=_settings.magnifier.enableTripleClick;
         _voice.Items.Clear();_voice.Items.Add("（日本語を自動選択）");
@@ -317,6 +326,9 @@ public sealed class MainForm : Form
             _settings.magnifier.enableTripleClick=false;
             _settings.ocr.copyToClipboard=_copy.Checked;
             _settings.ocr.preferJapanese=_japanese.Checked;
+            _settings.ocr.highAccuracyLocal=_highAccuracy.Checked;
+            _ocr.UseHighAccuracyLocal=_settings.ocr.highAccuracyLocal;
+            if(_settings.ocr.highAccuracyLocal)_ = _ocr.WarmUpAsync();
             _settings.Save();
             DiagnosticLog.Info("設定","設定変更を保存しました。");
             Status("設定を保存しました。");
@@ -624,7 +636,7 @@ public sealed class MainForm : Form
     private void Quit() {DiagnosticLog.Info("終了","通知領域などから終了しました。");_quitting=true;Close();}
     protected override void Dispose(bool disposing)
     {
-        if(disposing){DiagnosticLog.EntryAdded-=OnLogEntryAdded;_healthTimer.Stop();_healthTimer.Dispose();_cursorTimer.Stop();_cursorTimer.Dispose();_hoverGate.Dispose();_speech.Dispose();_tray.Visible=false;_tray.Dispose();}
+        if(disposing){DiagnosticLog.EntryAdded-=OnLogEntryAdded;_healthTimer.Stop();_healthTimer.Dispose();_cursorTimer.Stop();_cursorTimer.Dispose();_hoverGate.Dispose();_ocr.Dispose();_speech.Dispose();_tray.Visible=false;_tray.Dispose();}
         base.Dispose(disposing);
     }
 }

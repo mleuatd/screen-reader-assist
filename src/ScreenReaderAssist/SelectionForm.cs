@@ -56,8 +56,9 @@ public sealed class SelectionForm : Form
         base.OnPaint(e);
         e.Graphics.DrawImageUnscaled(_screenshot, Point.Empty);
         if (!_balloonMode && _selection.Width > 0 && _selection.Height > 0) {
-            using var brush = new SolidBrush(Color.FromArgb(55, Color.Yellow));
-            using var pen = new Pen(Color.Yellow, 3);
+            // High-contrast outline matching the user's green rectangle gesture.
+            using var brush = new SolidBrush(Color.FromArgb(20, Color.LimeGreen));
+            using var pen = new Pen(Color.LimeGreen, 5);
             e.Graphics.FillRectangle(brush, _selection); e.Graphics.DrawRectangle(pen, _selection);
         }
         using var bg = new SolidBrush(Color.FromArgb(215, Color.Black));
