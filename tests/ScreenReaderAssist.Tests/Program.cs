@@ -2,7 +2,7 @@ using ScreenReaderAssist;
 using System.Drawing;
 using System.Text.Json;
 
-if(args.Contains("--benchmark-tts",StringComparer.OrdinalIgnoreCase)) {NativeTtsBenchmark.Run();return;}
+if(args.Contains("--benchmark-tts",StringComparer.OrdinalIgnoreCase)) {Environment.ExitCode=JapaneseTtsBenchmark.Run();return;}
 if(args.Contains("--benchmark-tts-ja",StringComparer.OrdinalIgnoreCase)) {Environment.ExitCode=JapaneseTtsBenchmark.Run();return;}
 if(args.Contains("--benchmark-onecore-ja",StringComparer.OrdinalIgnoreCase)) {Environment.ExitCode=await OneCoreJapaneseBenchmark.RunAsync();return;}
 
