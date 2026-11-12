@@ -38,6 +38,8 @@ try {
     New-Item -ItemType Directory -Force -Path $licenses | Out-Null
     Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/PaddlePaddle/PaddleOCR/main/LICENSE' -OutFile (Join-Path $licenses 'PaddleOCR-Apache-2.0.txt') -TimeoutSec 90
     Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/meloht/RapidOCRSharpOnnx/master/LICENSE.txt' -OutFile (Join-Path $licenses 'RapidOCRSharpOnnx-Apache-2.0.txt') -TimeoutSec 90
+    Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/shimat/opencvsharp/master/LICENSE' -OutFile (Join-Path $licenses 'OpenCvSharp-Apache-2.0.txt') -TimeoutSec 90
+    Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/microsoft/onnxruntime/main/LICENSE' -OutFile (Join-Path $licenses 'OnnxRuntime-MIT.txt') -TimeoutSec 90
     foreach($license in (Get-ChildItem $licenses -File)){
         if($license.Length -lt 1000){throw "Missing third-party license: $($license.Name)"}
     }
