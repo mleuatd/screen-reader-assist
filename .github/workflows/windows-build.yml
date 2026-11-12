@@ -11,6 +11,9 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - name: オフライン動作の静的監査（通信API・クラウドSDKを禁止）
+        shell: pwsh
+        run: ./scripts/Verify-OfflineRuntime.ps1
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
