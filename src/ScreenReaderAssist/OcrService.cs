@@ -8,7 +8,8 @@ namespace ScreenReaderAssist;
 
 public sealed class OcrService : IDisposable
 {
-    private readonly OfflinePaddleOcr _enhanced=new();
+    private readonly OfflinePaddleOcr _enhanced;
+    public OcrService(string? modelDirectory=null) { _enhanced=new OfflinePaddleOcr(modelDirectory); }
     public bool UseHighAccuracyLocal {get;set;}=true;
     public string EnhancedAvailability => _enhanced.AvailabilityText;
     public Task WarmUpAsync()=>UseHighAccuracyLocal?_enhanced.WarmUpAsync():Task.CompletedTask;
