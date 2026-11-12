@@ -10,6 +10,7 @@ import argparse
 import json
 import os
 import pathlib
+import sys
 import statistics
 import time
 import unicodedata
@@ -141,6 +142,10 @@ def run(model):
 
 
 if __name__ == "__main__":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", choices=("small", "medium"), default="small")
     parser.add_argument("--summary", default=None)
