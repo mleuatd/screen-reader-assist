@@ -107,6 +107,7 @@ Check(JapaneseSpeechDiagnostic.Samples.Length==3,"Japanese local diagnostic has 
 var japaneseDiagnostic=JapaneseSpeechDiagnostic.Run();
 Check(File.Exists(japaneseDiagnostic.SavedTo),"Japanese voice diagnostic writes a local report");
 Check(japaneseDiagnostic.Report.Contains("日本語SAPI音声:"),"Japanese voice diagnostic reports voice availability explicitly");
+TextRegionDetectorRegressionTests.Run();
 SpeechDispatchTests.Run();
 Check(TrayReadingPolicy.CanAutomaticallyRead(false,false,ReadingModes.Cursor),
     "tray stays active: default cursor automatic reading works with settings hidden");
