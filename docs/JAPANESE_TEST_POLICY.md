@@ -28,3 +28,11 @@
 
 ## 既存ログの扱い
 2026年11月12日の英語SAPIの合成計測（624.2ms等）は**日本語ユーザー環境の評価指標として採用しない**。今後の速度改善の判断には日本語データが必要。
+
+## CIの日本語機能インストール（2026年11月12日追加）
+
+GitHubホストのWindowsランナーは使い捨て環境のため、既定で日本語OCR／日本語音声が未導入の場合がある。新しいCIジョブ `japanese-integration` は毎回 `scripts/Install-JapaneseTestFeatures.ps1` を実行し、Microsoft Windows Update公式経路から日本語Basic・フォント・OCR・TextToSpeechの追加機能を取得する。足りない場合はWindows標準の `Install-Language ja-JP` を試す。
+
+**取得後は必ず日本語OCRと日本語SAPI音声を実際に動作させる。** インストール成功だけでOCR精度や音声品質の合格とはしない。日本語OneCore音声も別途確認する。日本語機能が取得できなかった場合はCI上で失敗として明示し、英語へ代替しない。画面キャプチャから実際に音声が聞こえるまでの遅延は、引き続き実機の別測定が必要。
+
+関連資料：MicrosoftのWindows言語追加手順 https://learn.microsoft.com/ja-jp/windows-hardware/manufacture/desktop/add-language-packs-to-windows?view=windows-11

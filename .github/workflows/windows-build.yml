@@ -64,3 +64,78 @@ jobs:
           name: ScreenReaderAssist-win-x64
           path: ScreenReaderAssist-win-x64.zip
           if-no-files-found: error
+  # GitHub-hosted Windows starts with a fresh VM. Install Japanese features on EACH run.
+  # Keep this job separate so a Windows Update/FoD service outage is not mistaken for
+  # a C# compile failure, and so the Japanese test failure remains visible.
+  japanese-integration:
+    name: 日本語OCR・音声導入と実測
+    runs-on: windows-2025
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Microsoft公式の日本語OCR・音声機能をインストール
+        id: install
+        shell: powershell
+        timeout-minutes: 20
+        continue-on-error: true
+        run: .\\scripts\\Install-JapaneseTestFeatures.ps1
+      - name: C#日本語テストをビルド
+        id: build-ja
+        shell: pwsh
+        run: dotnet build tests/ScreenReaderAssist.Tests/ScreenReaderAssist.Tests.csproj -c Release
+      - name: 日本語OCR実行テスト
+        id: ocr-ja
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          dotnet run --project tests/ScreenReaderAssist.Tests/ScreenReaderAssist.Tests.csproj -c Release --no-build -- --ocr-ja
+          if ($LASTEXITCODE -ne 0) { throw "日本語OCR未達成。戻り値: $LASTEXITCODE" }
+      - name: 日本語SAPI音声合成テスト（実アプリ側エンジン）
+        id: sapi-ja
+        continue-on-error: true
+        shell: pwsh
+        timeout-minutes: 6
+        run: |
+          dotnet run --project tests/ScreenReaderAssist.Tests/ScreenReaderAssist.Tests.csproj -c Release --no-build -- --benchmark-tts-ja
+          if ($LASTEXITCODE -ne 0) { throw "日本語SAPI音声未達成。戻り値: $LASTEXITCODE" }
+      - name: 日本語OneCore音声合成テスト（別APIの診断）
+        id: onecore-ja
+        continue-on-error: true
+        shell: pwsh
+        timeout-minutes: 6
+        run: |
+          dotnet run --project tests/ScreenReaderAssist.Tests/ScreenReaderAssist.Tests.csproj -c Release --no-build -- --benchmark-onecore-ja
+          if ($LASTEXITCODE -ne 0) { throw "日本語OneCore音声未達成。戻り値: $LASTEXITCODE" }
+      - name: 日本語テストの結果を判定（不足を成功扱いしない）
+        if: always()
+        shell: pwsh
+        env:
+          INSTALL_RESULT: ${{ steps.install.outcome }}
+          BUILD_RESULT: ${{ steps.build-ja.outcome }}
+          OCR_RESULT: ${{ steps.ocr-ja.outcome }}
+          SAPI_RESULT: ${{ steps.sapi-ja.outcome }}
+          ONECORE_RESULT: ${{ steps.onecore-ja.outcome }}
+        run: |
+          $rows = @(
+            "Windows日本語機能の導入：$env:INSTALL_RESULT",
+            "日本語テストのビルド：$env:BUILD_RESULT",
+            "日本語OCR：$env:OCR_RESULT",
+            "日本語SAPI：$env:SAPI_RESULT",
+            "日本語OneCore：$env:ONECORE_RESULT"
+          )
+          Add-Content $env:GITHUB_STEP_SUMMARY '## 日本語実動作の結果'
+          foreach ($row in $rows) {
+            Write-Host $row
+            Add-Content $env:GITHUB_STEP_SUMMARY ("- " + $row)
+          }
+          Add-Content $env:GITHUB_STEP_SUMMARY '注意：音声波形合成は実測していますが、スピーカーから聞こえ始めるまでの遅延は別途Windows 11実機で検証が必要です。'
+          if ($env:INSTALL_RESULT -ne 'success' -or $env:BUILD_RESULT -ne 'success' -or
+              $env:OCR_RESULT -ne 'success' -or $env:SAPI_RESULT -ne 'success') {
+            throw '日本語OCRまたは実アプリの日本語SAPIが未達成です。英語音声・英語OCRでは代用しません。'
+          }
+          if ($env:ONECORE_RESULT -ne 'success') {
+            Write-Warning '日本語OneCore音声は未達成です。別APIとして調査します（現行アプリはSAPIを使用）。'
+          }
