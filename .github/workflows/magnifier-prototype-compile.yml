@@ -24,6 +24,9 @@ jobs:
         shell: powershell
     steps:
       - uses: actions/checkout@v4
+      - name: オフライン専用仕様の静的監査
+        shell: pwsh
+        run: ./scripts/Verify-OfflineRuntime.ps1
       - name: 実際の起動スクリプトと同じ参照でC#コードをコンパイル
         run: |
           $ErrorActionPreference = 'Stop'
