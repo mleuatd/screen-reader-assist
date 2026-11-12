@@ -55,7 +55,8 @@ public sealed class SpeechService : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed,this);
         if(string.IsNullOrWhiteSpace(text))return;
-        DiagnosticLog.Info("音声要求",$"読み上げ要求を受信。文字数={text.Length}。");
+        // Measure request-to-engine submission, not audible playback latency.
+        var dispatchWatch=System.Diagnostics.Stopwatch.StartNew();
 
         // Stop an old utterance before changing voice or speaking the next one.
         // CancelAll also clears queued playback, so the latest requested text wins.
@@ -81,7 +82,7 @@ public sealed class SpeechService : IDisposable
         if(_appliedRate!=rate) { _engine.Rate=rate;_appliedRate=rate; }
         if(_appliedVolume!=volume) { _engine.Volume=volume;_appliedVolume=volume; }
         _engine.SpeakAsync(text);
-        DiagnosticLog.Info("音声要求",$"音声エンジンへの非同期送信成功。速度={rate}、音量={volume}。");
+        DiagnosticLog.Info("音声要求",$"文字数={text.Length}、速度={rate}、音量={volume}、音声エンジン受付まで={dispatchWatch.Elapsed.TotalMilliseconds:F1}ms（発声開始までの時間ではありません）。");
     }
 
     private string ResolveVoice(string? configured)

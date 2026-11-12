@@ -24,7 +24,7 @@
 - Windows 11 Home x64
 - OSにインストール済みのOCR言語（日本語が推奨）
 - Windowsにインストール済みのSAPI対応読み上げ音声（日本語推奨）
-- ソースから開発する場合は .NET 8 SDK とインターネット経由の公開NuGet取得（`System.Speech` 8.0.0）
+- 開発版（mainの次の更新候補）をソースからビルドする場合は .NET 10 SDK とインターネット経由の公開NuGet取得（`System.Speech` 10.0.15）。従来の v0.6.5-preview.1 は .NET 8 時代の配布済みプレビューです。
 
 ## ビルド
 
@@ -166,7 +166,7 @@ Windows UI Automationを優先し、取得できない場合はWindows標準のM
 
 ## v0.6 EXE + settings.ini の持ち運べる配布構成
 
-- アプリはC#／.NET 8 Windows Forms製。配布ZIPの中身は`ScreenReaderAssist.exe`と同じ階層に`settings.ini`を置きます（自己完結型Windows版のため同フォルダーに補助DLL等がある場合もあります）。
+- 既存公開プレビューはC#／.NET 8 Windows Forms製であり、開発中の次版は.NET 10 LTSへ移行予定です。配布ZIPの中身は`ScreenReaderAssist.exe`と同じ階層に`settings.ini`を置きます（自己完結型Windows版のため同フォルダーに補助DLL等がある場合もあります）。
 - INIはUTF-8で、`[reading]`・`[speech]`・`[ocr]`・`[magnifier]`の項目をメモ帳で編集できます。独自の追加ソフトは不要。
 - 起動時は`AppContext.BaseDirectory/settings.ini`を優先。古いJSON設定を使っていた場合はINIがなければ`%LOCALAPPDATA%/ScreenReaderAssist/settings.json`から設定を読み、保存時はEXE横の`settings.ini`へ移行します（JSONは削除しない）。
 - アプリの設定ウィンドウからの保存・インポート・エクスポートもINIが基本（旧JSONの取り込みも可能）。
