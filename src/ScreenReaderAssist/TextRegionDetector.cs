@@ -1,6 +1,8 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using System.Buffers;
+using System.Runtime.InteropServices;
 
 namespace ScreenReaderAssist;
 
@@ -18,23 +20,44 @@ public static class TextRegionDetector
         var w=(image.Width+CellWidth-1)/CellWidth;
         var h=(image.Height+CellHeight-1)/CellHeight;
         var active=new bool[w*h];
-        for(int cy=0;cy<h;cy++)
-        for(int cx=0;cx<w;cx++)
+        // ScreenCapture produces 32bpp ARGB bitmaps. Copy their raw BGRA pixels once
+        // instead of invoking GDI+ GetPixel three times for every edge sample.
+        // Other image formats keep the original GetPixel path for identical behavior.
+        var pixels=Copy32bppPixelsOrNull(image);
+        try
         {
-            int x0=cx*CellWidth, y0=cy*CellHeight;
-            int x1=Math.Min(image.Width,x0+CellWidth), y1=Math.Min(image.Height,y0+CellHeight);
-            int edges=0, samples=0;
-            for(int y=Math.Max(1,y0+1);y<y1-1;y+=2)
-            for(int x=Math.Max(1,x0+1);x<x1-1;x+=2)
+            for(int cy=0;cy<h;cy++)
+            for(int cx=0;cx<w;cx++)
             {
-                var center=Brightness(image.GetPixel(x,y));
-                var left=Brightness(image.GetPixel(x-1,y));
-                var above=Brightness(image.GetPixel(x,y-1));
-                if(Math.Abs(center-left)>28 || Math.Abs(center-above)>28)edges++;
-                samples++;
+                int x0=cx*CellWidth, y0=cy*CellHeight;
+                int x1=Math.Min(image.Width,x0+CellWidth), y1=Math.Min(image.Height,y0+CellHeight);
+                int edges=0, samples=0;
+                for(int y=Math.Max(1,y0+1);y<y1-1;y+=2)
+                for(int x=Math.Max(1,x0+1);x<x1-1;x+=2)
+                {
+                    int center,left,above;
+                    if(pixels is not null)
+                    {
+                        center=Brightness32(pixels, image.Width, x, y);
+                        left=Brightness32(pixels, image.Width, x-1, y);
+                        above=Brightness32(pixels, image.Width, x, y-1);
+                    }
+                    else
+                    {
+                        center=Brightness(image.GetPixel(x,y));
+                        left=Brightness(image.GetPixel(x-1,y));
+                        above=Brightness(image.GetPixel(x,y-1));
+                    }
+                    if(Math.Abs(center-left)>28 || Math.Abs(center-above)>28)edges++;
+                    samples++;
+                }
+                var density=samples==0 ? 0 : (double)edges/samples;
+                active[cy*w+cx]=density>=0.035 && density<=0.78;
             }
-            var density=samples==0 ? 0 : (double)edges/samples;
-            active[cy*w+cx]=density>=0.035 && density<=0.78;
+        }
+        finally
+        {
+            if(pixels is not null) ArrayPool<byte>.Shared.Return(pixels);
         }
         var visited=new bool[active.Length];
         var proposals=new List<(Rectangle region,double score)>();
@@ -107,6 +130,44 @@ public static class TextRegionDetector
                 0,0,image.Width,image.Height,GraphicsUnit.Pixel,attributes);
             return result;
         } catch { result.Dispose(); throw; }
+    }
+
+    // Limit pooled temporary memory on very large or unusual captures.
+    // For unsupported formats the tested legacy GetPixel path is retained.
+    private static byte[]? Copy32bppPixelsOrNull(Bitmap image)
+    {
+        if(image.PixelFormat!=PixelFormat.Format32bppArgb &&
+           image.PixelFormat!=PixelFormat.Format32bppRgb) return null;
+        long bytes=(long)image.Width*image.Height*4;
+        if(bytes>64L*1024*1024 || bytes>int.MaxValue) return null;
+        var pixels=ArrayPool<byte>.Shared.Rent((int)bytes);
+        BitmapData? locked=null;
+        try
+        {
+            locked=image.LockBits(new Rectangle(0,0,image.Width,image.Height),
+                ImageLockMode.ReadOnly,image.PixelFormat);
+            int rowSize=checked(image.Width*4);
+            for(int y=0;y<image.Height;y++)
+                Marshal.Copy(IntPtr.Add(locked.Scan0,checked(y*locked.Stride)),
+                    pixels,checked(y*rowSize),rowSize);
+            return pixels;
+        }
+        catch(ExternalException)
+        {
+            // Some device-backed GDI+ bitmaps reject LockBits.
+            ArrayPool<byte>.Shared.Return(pixels);
+            return null;
+        }
+        finally
+        {
+            if(locked is not null) image.UnlockBits(locked);
+        }
+    }
+
+    private static int Brightness32(byte[] pixels,int width,int x,int y)
+    {
+        int offset=checked((y*width+x)*4); // Windows 32bpp pixel memory is BGRA.
+        return (pixels[offset+2]*77+pixels[offset+1]*150+pixels[offset]*29)>>8;
     }
 
     private static int Brightness(Color p)=>(p.R*77+p.G*150+p.B*29)>>8;
