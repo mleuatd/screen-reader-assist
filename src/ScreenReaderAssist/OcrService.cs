@@ -1,9 +1,7 @@
 using System.Drawing;
-using System.Drawing.Imaging;
 using Windows.Graphics.Imaging;
 using Windows.Media.Ocr;
 using Windows.Globalization;
-using Windows.Storage.Streams;
 namespace ScreenReaderAssist;
 
 public sealed class OcrService
@@ -65,18 +63,10 @@ public sealed class OcrService
             resized=new Bitmap(bmp,new Size(Math.Max(1,(int)(bmp.Width*scale)),Math.Max(1,(int)(bmp.Height*scale))));
             input=resized;
         }
-        using var ms=new MemoryStream();
-        try { input.Save(ms,ImageFormat.Png); }
+        SoftwareBitmap ocrBitmap;
+        try { ocrBitmap=await OcrBitmapBridge.CreateAsync(input); }
         finally { resized?.Dispose(); }
-        using var stream=new InMemoryRandomAccessStream();
-        using (var writer=new DataWriter(stream)) {
-            writer.WriteBytes(ms.ToArray());
-            await writer.StoreAsync();
-            writer.DetachStream();
-        }
-        stream.Seek(0);
-        var decoder=await BitmapDecoder.CreateAsync(stream);
-        using var bitmap=await decoder.GetSoftwareBitmapAsync(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
+        using var bitmap=ocrBitmap;
         long bitmapReadyMs=perfWatch.ElapsedMilliseconds;
         var result=await engine.RecognizeAsync(bitmap);
         long totalMs=perfWatch.ElapsedMilliseconds;
