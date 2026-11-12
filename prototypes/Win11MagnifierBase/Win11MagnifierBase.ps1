@@ -1,4 +1,4 @@
-# Windows 11 Magnifier Base v0.1
+﻿# Windows 11 Magnifier Base v0.1
 # Runs with Windows PowerShell 5.1. Uses the real Windows Magnifier.
 # The future extension point is Invoke-MagnifierCommand.
 
