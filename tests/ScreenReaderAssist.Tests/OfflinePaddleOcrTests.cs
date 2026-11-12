@@ -28,7 +28,7 @@ internal static class OfflinePaddleOcrTests
         preload.Stop();
 
         var elapsed=new List<double>();
-        for(int variant=0;variant<3;variant++)
+        for(int variant=0;variant<4;variant++)
         {
             using var image=MakeImage(variant);
             var watch=Stopwatch.StartNew();
@@ -48,7 +48,7 @@ internal static class OfflinePaddleOcrTests
                 throw new Exception("本体の範囲読み上げ処理から日本語モデルが使用できませんでした。");
             Console.WriteLine("PASS: 既存のC#範囲OCRサービスから高精度モデルを直接呼べました。");
         }
-        Console.WriteLine($"BENCH: 日本語モデル準備={preload.Elapsed.TotalMilliseconds:F1}ms、最初の認識={elapsed[0]:F1}ms、次の2回={elapsed[1]:F1}/{elapsed[2]:F1}ms。");
+        Console.WriteLine($"BENCH: 日本語モデル準備={preload.Elapsed.TotalMilliseconds:F1}ms、最初の認識={elapsed[0]:F1}ms、続く3回={elapsed[1]:F1}/{elapsed[2]:F1}/{elapsed[3]:F1}ms。");
         Console.WriteLine("注意: ここにはマウスジェスチャー、画面取得、SAPI音声の発声開始時間は含まれません。");
         return 0;
     }
@@ -59,6 +59,23 @@ internal static class OfflinePaddleOcrTests
         using(var g=Graphics.FromImage(background))
         {
             g.Clear(variant==1?Color.FromArgb(241,239,230):Color.White);
+            if(variant==3)
+            {
+                // Simulated game UI: colored scenery, character-like silhouettes,
+                // translucent speech panel and bright green drag boundary.
+                g.Clear(Color.FromArgb(38,58,92));
+                using var accent=new SolidBrush(Color.FromArgb(82,122,141));
+                using var scenery=new SolidBrush(Color.FromArgb(131,73,130));
+                for(int x=0;x<950;x+=108)
+                {
+                    g.FillRectangle(accent,x,0,38,250);
+                    g.FillEllipse(scenery,x+34,56,125,170);
+                }
+                using var panelBrush=new SolidBrush(Color.FromArgb(234,249,246,239));
+                g.FillRectangle(panelBrush,10,12,928,226);
+                using var border=new Pen(Color.LimeGreen,5);
+                g.DrawRectangle(border,9,11,930,228);
+            }
             using var font=new Font("Yu Gothic",36,FontStyle.Bold);
             var firstBrush=variant==1?Brushes.SaddleBrown:Brushes.Black;
             var secondBrush=variant==2?Brushes.DarkBlue:firstBrush;
