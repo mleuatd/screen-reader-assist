@@ -28,6 +28,15 @@ try {
             Where-Object { $_.FullName -like ('*'+$name+'*') } |
             Select-Object -First 1
         if(-not $onnx){throw "Official ONNX model missing: $name"}
+        # Pin the exact model graph successfully tested in Japanese Windows CI.
+        # Reject silently replaced model artifacts, even from an official URL.
+        $expected=if($kind -eq 'det') {
+            'D73E0058B7A8086BBD57F3D10B8BCD4FF95363F67E06E2762B5E814FE9C9410E'
+        } else {
+            '5435FD747C9E0EFE15A96D0B378D5BD157E9492ED8FD80EDF08F30D02FA24634'
+        }
+        $digest=(Get-FileHash -LiteralPath $onnx.FullName -Algorithm SHA256).Hash
+        if($digest -ne $expected) {throw "Official model SHA256 does not match tested model: $name"}
         $nameOut=if($kind -eq 'det'){'ppocrv6_det.onnx'}else{'ppocrv6_rec.onnx'}
         Copy-Item -LiteralPath $onnx.FullName -Destination (Join-Path $models $nameOut) -Force
         Write-Host ("Bundled local model: $nameOut / $($onnx.Length) bytes")
