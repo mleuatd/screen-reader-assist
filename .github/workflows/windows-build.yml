@@ -62,6 +62,12 @@ jobs:
           $models=Join-Path (Resolve-Path publish).Path 'models'
           dotnet run --project tests/ScreenReaderAssist.Tests/ScreenReaderAssist.Tests.csproj -c Release --no-build --no-restore -- --paddle-ja $models
           if ($LASTEXITCODE -ne 0) { throw '日本語ローカルOCRの検証に失敗しました。ZIPは作成しません。' }
+      - name: アプリのテストプロセスの外向き通信を遮断して日本語OCRを再検証
+        shell: pwsh
+        timeout-minutes: 5
+        run: |
+          $models=Join-Path (Resolve-Path publish).Path 'models'
+          ./scripts/Test-OfflineOcrWithFirewall.ps1 -Models $models
       - name: Add portable INI beside the EXE
         shell: pwsh
         run: |
