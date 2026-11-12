@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
   GitHub-hosted Windows の日本語 OCR・日本語音声機能を、Microsoft の Windows
   Features on Demand からインストールする。非公式配布物は使わない。
