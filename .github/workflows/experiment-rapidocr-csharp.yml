@@ -1,0 +1,72 @@
+name: Experiment CSharp PP-OCRv6 Japanese inference
+on:
+  pull_request:
+    paths:
+      - 'experiments/ocr/csharp/**'
+      - '.github/workflows/experiment-rapidocr-csharp.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rapidocr-csharp:
+    runs-on: windows-2025
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: C# Windows OCR library build
+        shell: pwsh
+        timeout-minutes: 6
+        run: |
+          dotnet build experiments/ocr/csharp/RapidOcrCSharpProbe.csproj -c Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --project experiments/ocr/csharp/RapidOcrCSharpProbe.csproj -c Release --no-build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Download officially distributed open-source Japanese-capable ONNX OCR models
+        shell: pwsh
+        timeout-minutes: 8
+        run: |
+          New-Item -ItemType Directory -Force models | Out-Null
+          $base = 'https://paddle-model-ecology.bj.bcebos.com/paddlex/official_inference_model/paddle3.0.0'
+          foreach ($kind in @('det', 'rec')) {
+            $name = "PP-OCRv6_small_${kind}_onnx_infer"
+            Invoke-WebRequest -Uri "$base/$name.tar" -OutFile "models/$name.tar" -TimeoutSec 360
+            if (-not (Test-Path "models/$name.tar")) { throw "$name download failed" }
+            tar -xf "models/$name.tar" -C models
+          }
+          $files = @(Get-ChildItem models -Recurse -Filter '*.onnx' -File)
+          if ($files.Count -lt 2) { throw "ONNX models not found in official archive" }
+          $det = $files | Where-Object { $_.FullName -like '*small_det*' } | Select-Object -First 1
+          $rec = $files | Where-Object { $_.FullName -like '*small_rec*' } | Select-Object -First 1
+          if (-not $det -or -not $rec) { throw "det/rec ONNX files missing" }
+          $det.FullName | Set-Content -Path models/det-path.txt -Encoding UTF8
+          $rec.FullName | Set-Content -Path models/rec-path.txt -Encoding UTF8
+      - name: Real Japanese screenshot-like sample using pure C# OCR
+        shell: pwsh
+        timeout-minutes: 6
+        run: |
+          Add-Type -AssemblyName System.Drawing
+          $bmp = [System.Drawing.Bitmap]::new(950,250)
+          $g = [System.Drawing.Graphics]::FromImage($bmp)
+          try {
+            $g.Clear([System.Drawing.Color]::White)
+            $font = [System.Drawing.Font]::new('Yu Gothic',36,[System.Drawing.FontStyle]::Bold)
+            try {
+              $g.DrawString('あら、プレゼントが届いています。',$font,[System.Drawing.Brushes]::SaddleBrown,24,42)
+              $g.DrawString('有用なものだといいですね。',$font,[System.Drawing.Brushes]::DarkBlue,24,132)
+            } finally {
+              $font.Dispose()
+            }
+            $bmp.Save((Join-Path (Get-Location) 'japanese-dialog.png'),[System.Drawing.Imaging.ImageFormat]::Png)
+          } finally {
+            $g.Dispose()
+            $bmp.Dispose()
+          }
+          $det = Get-Content models/det-path.txt -Raw -Encoding UTF8
+          $rec = Get-Content models/rec-path.txt -Raw -Encoding UTF8
+          dotnet run --project experiments/ocr/csharp/RapidOcrCSharpProbe.csproj -c Release --no-build -- "$($det.Trim())" "$($rec.Trim())" 'japanese-dialog.png'
+          if ($LASTEXITCODE -ne 0) { throw 'C# PP-OCRv6 Japanese recognition failed' }
