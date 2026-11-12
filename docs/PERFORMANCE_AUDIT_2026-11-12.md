@@ -33,3 +33,21 @@
 ## 参考
 - Microsoft .NETサポート方針： https://dotnet.microsoft.com/ja-jp/platform/support/policy
 - NuGet System.Speech 10.0.15： https://www.nuget.org/packages/System.Speech/10.0.15
+
+## 文字領域候補の画素走査最適化（2026-11-12）
+
+### 対象と安全性
+- `TextRegionDetector.Propose` は日本語OCRが通常読み取りを失敗したときだけ、画面画像から文字らしい境界を探す補助処理。
+- 既存の 32bpp ARGB/RGB 画像（`ScreenCapture`が生成する形式）だけで `LockBits` + `Marshal.Copy` を使い、GDI+の `GetPixel` を何万回も呼ぶ処理を減らす。
+- 32bpp PArgb、24bpp、その他の形式や巨大画像（作業バッファ64MiB超）は**旧処理を保持**する。
+- `ArrayPool<byte>` で一時バッファを再利用し、`finally` で返却。ロックも必ず解除。
+- 文字領域の閾値・探索・OCRの認識処理そのものには変更を加えない。
+
+### デグレ検証
+- 旧 `TextRegionDetector` をテスト専用 `TextRegionDetectorReference` として保持。
+- **日本語文字画像108条件**（画像の大きさ3種×画素形式4種×カーソル位置3種×候補件数3種）で、候補矩形の位置・大きさ・順番が旧方式と完全一致することを自動確認。
+- GitHub Windowsランナーで、日本語文章を描いた1200×600画像の文字領域探索の旧方式・新方式の中央値を比較。性能値は結果が出てから記入。
+- 丸ごとの日本語OCRや発声開始の所要時間を速くしたと断言するための証拠ではない。Windows 11実機の測定が別途必要。
+
+### 差し戻し
+- 差分は `TextRegionDetector.cs` の画素走査に限定。問題が出た場合はこの変更コミットを元に戻し、旧 `GetPixel` の走査に戻せる。
