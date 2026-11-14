@@ -47,6 +47,9 @@ jobs:
           foreach ($required in @('ScreenReaderAssist.exe', 'settings.ini', 'ResetScreen.cmd')) {
             if (-not (Test-Path (Join-Path publish $required))) { throw "Missing release file: $required" }
           }
+          & "$env:WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File .\scripts\Verify-MagnifierSource.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'Three-monitor magnifier build failed' }
+          ./scripts/Prepare-OneClickMagnifierZip.ps1 -PublishDirectory publish
           Compress-Archive -Path publish\* -DestinationPath ScreenReaderAssist-win-x64.zip
       - name: Create GitHub Release
         shell: pwsh
