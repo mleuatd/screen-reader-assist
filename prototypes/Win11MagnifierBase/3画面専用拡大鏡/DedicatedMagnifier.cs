@@ -279,7 +279,7 @@ namespace Win11Magnifier
         private const int MK_LBUTTON = 0x0001;
         private const int PIXELS_PER_STEP = 24;
         private const float ZOOM_PER_STEP = 0.10f;
-        private const int MAX_CLICK_MOVEMENT = 12;
+        private const int MAX_CLICK_MOVEMENT = 16;
 
         private enum Gesture { None, Zoom, VoiceRate }
         private readonly DedicatedViewer viewer;
@@ -306,10 +306,9 @@ namespace Win11Magnifier
         {
             if (!firstClickCandidate) return false;
             int elapsed = unchecked(Environment.TickCount - firstClickPressedTicks);
-            if (elapsed < 0 || elapsed > SystemInformation.DoubleClickTime) return false;
-            Size size = SystemInformation.DoubleClickSize;
-            return Math.Abs(position.X - firstClickPoint.X) <= Math.Max(3, size.Width / 2)
-                && Math.Abs(position.Y - firstClickPoint.Y) <= Math.Max(3, size.Height / 2);
+            return MagnifierGestureMath.IsSecondClick(elapsed,
+                position.X - firstClickPoint.X, position.Y - firstClickPoint.Y,
+                SystemInformation.DoubleClickTime, SystemInformation.DoubleClickSize);
         }
 
         internal bool IsHookGestureActive { get { return dragging && hookOwned; } }
@@ -469,6 +468,16 @@ namespace Win11Magnifier
     internal static class MagnifierGestureMath
     {
         internal static int HorizontalSteps(int deltaPixels) { return deltaPixels / 24; }
+
+        internal static bool IsSecondClick(int elapsedMs,int deltaX,int deltaY,int maxMilliseconds,Size doubleClickSize)
+        {
+            // A 3px system default is too strict for users with severely reduced
+            // vision. Keep time bounded and allow modest positional uncertainty.
+            int tolerance = Math.Max(18, Math.Max(doubleClickSize.Width,doubleClickSize.Height) / 2);
+            return elapsedMs >= 0 && elapsedMs <= maxMilliseconds &&
+                Math.Abs((long)deltaX) <= tolerance &&
+                Math.Abs((long)deltaY) <= tolerance;
+        }
     }
 
     internal sealed class DedicatedViewer : Form
