@@ -47,7 +47,8 @@ pause
 exit /b 1
 '@
 $ascii=[Text.Encoding]::ASCII
-[IO.File]::WriteAllText((Join-Path $publish '拡大鏡実行.bat'),$launcher.Replace("`n","`r`n"),$ascii)
+$normalized=$launcher.Replace("`r`n","`n").Replace("`r","`n")
+[IO.File]::WriteAllText((Join-Path $publish '拡大鏡実行.bat'),$normalized.Replace("`n","`r`n"),$ascii)
 
 $readme=@'
 Windows 11 日本語拡大鏡＆画面読み上げ　試用版
