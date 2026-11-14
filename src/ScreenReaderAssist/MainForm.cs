@@ -294,6 +294,9 @@ public sealed class MainForm : Form
     }
     private void SynchronizeVoiceRate()
     {
+        // Do not overwrite an unfinished change while the user is editing
+        // the numeric speech-rate control in the settings window.
+        if(Visible && _rate.ContainsFocus)return;
         if(!SharedSpeechRate.TryRead(out var received) || received==_settings.speech.rate)return;
         _settings.speech.rate=received;
         if(!IsDisposed && _rate.Value!=received)_rate.Value=received;
