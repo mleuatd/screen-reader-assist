@@ -101,6 +101,17 @@ C#／.NET 10の高精度日本語OCRと同梱モデルをWindows CIで実際に�
 '@
 [IO.File]::WriteAllText((Join-Path $publish 'README_最初にお読みください.txt'),$readme,[Text.UTF8Encoding]::new($true))
 
+# Remove developer-only debug symbols/import libraries. These are not used
+# by the shipped self-contained EXE; retaining the ~96 MB Skia PDB makes an
+# accessibility test download unnecessarily large.
+foreach($debugName in @('libSkiaSharp.pdb','ScreenReaderAssist.pdb',
+                        'onnxruntime.lib','onnxruntime_providers_shared.lib')) {
+    $debugPath=Join-Path $publish $debugName
+    if(Test-Path -LiteralPath $debugPath -PathType Leaf) {
+        Remove-Item -LiteralPath $debugPath -Force
+    }
+}
+
 $bat=Join-Path $publish '拡大鏡実行.bat'
 if(-not(Test-Path -LiteralPath $bat)){throw 'One-click launcher was not created'}
 if(-not(Test-Path -LiteralPath (Join-Path $magnifier 'GlobalOcrSelection.cs'))){throw 'Magnifier C# source missing'}
