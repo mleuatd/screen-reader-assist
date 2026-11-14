@@ -58,6 +58,8 @@ public sealed class MainForm : Form
             DiagnosticLog.Error("設定読み込み",ex);
             _settings=new AppSettings();
         }
+        if(SharedSpeechRate.TryRead(out var sharedRate)) _settings.speech.rate=sharedRate;
+        else SharedSpeechRate.Publish(_settings.speech.rate);
         Text="Screen Reader Assist 設定";
         AccessibleName="Screen Reader Assist 設定画面";
         MinimumSize=new Size(660,610);
@@ -105,7 +107,7 @@ public sealed class MainForm : Form
         _cursorTimer.Tick+=CursorTimerTick;
         _pointerMovedAt=Environment.TickCount64;
         _cursorTimer.Start();
-        _healthTimer.Tick+=(_,_)=>RefreshHealth();
+        _healthTimer.Tick+=(_,_)=>{ SynchronizeVoiceRate(); RefreshHealth(); };
         _healthTimer.Start();
         DiagnosticLog.Info("常駐","通知領域に常駐しました。設定画面は非表示でも監視を続けます。");
         if(DiagnosticLog.LastWriteError is string error) Status("EXE横にログを書き込めません: "+error);
@@ -290,6 +292,14 @@ public sealed class MainForm : Form
             }
         } catch(InvalidOperationException) { /* Form is closing. */ }
     }
+    private void SynchronizeVoiceRate()
+    {
+        if(!SharedSpeechRate.TryRead(out var received) || received==_settings.speech.rate)return;
+        _settings.speech.rate=received;
+        if(!IsDisposed && _rate.Value!=received)_rate.Value=received;
+        // A currently speaking sentence may retain its original rate; future
+        // utterances always use the shared value.
+    }
     private void RefreshHealth()
     {
         if(IsDisposed)return;
@@ -330,6 +340,7 @@ public sealed class MainForm : Form
             _ocr.UseHighAccuracyLocal=_settings.ocr.highAccuracyLocal;
             if(_settings.ocr.highAccuracyLocal)_ = _ocr.WarmUpAsync();
             _settings.Save();
+            SharedSpeechRate.Publish(_settings.speech.rate);
             DiagnosticLog.Info("設定","設定変更を保存しました。");
             Status("設定を保存しました。");
         } catch(Exception ex) {DiagnosticLog.Error("設定保存",ex);Status("設定保存エラー: "+ex.Message); }
