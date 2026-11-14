@@ -52,7 +52,7 @@ namespace Win11Magnifier
         private Rectangle pendingRectangle;
         private Point pendingClick;
         private System.Windows.Forms.Timer captureDelay;
-        private long selectionStartedAt;
+        private int selectionStartedAt;
 
         [StructLayout(LayoutKind.Sequential)]
         private struct LowLevelPoint { public int x; public int y; }
@@ -157,7 +157,7 @@ namespace Win11Magnifier
                     selectionButtonKey = msg == WM_RBUTTONDOWN ? VK_RBUTTON : VK_LBUTTON;
                     selectionButtonUpMessage = msg == WM_RBUTTONDOWN ? WM_RBUTTONUP : WM_LBUTTONUP;
                     selecting = true;
-                    selectionStartedAt = Environment.TickCount64;
+                    selectionStartedAt = Environment.TickCount;
                     outlineVisible = false;
                     // Suppress only gestures started as Alt+left or Alt+right mouse down.
                     // The target app must not receive a stray click/context menu.
@@ -205,7 +205,7 @@ namespace Win11Magnifier
             // so GetAsyncKeyState(button) cannot reliably indicate that it is
             // still held. Only the matching UP or Esc ends this gesture.
             if (selecting && (Pressed(VK_ESCAPE) ||
-                Environment.TickCount64 - selectionStartedAt > 30000))
+                unchecked(Environment.TickCount - selectionStartedAt) > 30000))
             {
                 CancelSelection();
                 return;
