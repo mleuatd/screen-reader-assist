@@ -137,7 +137,7 @@ public static class PortableIni
         sb.AppendLine("読み取りモード="+WriteMode(s.reading.mode));
         sb.AppendLine("; 意図しない読み上げ防止のため初期設定はいいえ。従来の設定も明示許可がなければOFF。");
         sb.AppendLine("カーソル自動読み上げを許可="+Toggle(s.reading.autoReadEnabled));
-        sb.AppendLine("; カーソルを止めてから読み始めるまでの時間（400～2000ミリ秒）");
+        sb.AppendLine("; カーソルを止めてから読み始めるまでの時間（200～2000ミリ秒）");
         sb.AppendLine("カーソル停止時間（ミリ秒）="+s.reading.dwellMilliseconds.ToString(Inv));
         sb.AppendLine("画像の文字も読み取る="+Toggle(s.reading.ocrFallback));
         sb.AppendLine();
