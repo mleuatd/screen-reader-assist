@@ -262,11 +262,9 @@ namespace Win11Magnifier
         }
     }
 
-    // Native Magnifier child window input. Neither source monitor receives mouse input
-    // nor does this app use system-wide mouse hooks or synthetic clicks.
-    // Click+drag => zoom. Click, release, second click+drag => speech rate.
-    // A timed, distance-limited fallback detects double clicks even if the native
-    // Magnifier class doesn't have CS_DBLCLKS.
+    // Native magnifier windows may not deliver ordinary mouse messages.
+    // The already-installed WH_MOUSE_LL listener forwards clicks inside the
+    // preview to this controller. Native-window messages remain as a fallback.
     internal sealed class PreviewDragInput : NativeWindow
     {
         private const int WM_MOUSEMOVE = 0x0200;
@@ -279,14 +277,15 @@ namespace Win11Magnifier
         private const int WM_CAPTURECHANGED = 0x0215;
         private const int WM_CANCELMODE = 0x001F;
         private const int MK_LBUTTON = 0x0001;
-        private const int PIXELS_PER_STEP = 48;
-        private const float ZOOM_PER_STEP = 0.10f; // +10 percentage points.
+        private const int PIXELS_PER_STEP = 24;
+        private const float ZOOM_PER_STEP = 0.10f;
         private const int MAX_CLICK_MOVEMENT = 12;
 
         private enum Gesture { None, Zoom, VoiceRate }
         private readonly DedicatedViewer viewer;
         private Gesture currentGesture = Gesture.None;
         private bool dragging;
+        private bool hookOwned;
         private bool changed;
         private Point pressPoint;
         private float startZoom;
@@ -313,8 +312,61 @@ namespace Win11Magnifier
                 && Math.Abs(position.Y - firstClickPoint.Y) <= Math.Max(3, size.Height / 2);
         }
 
+        internal bool IsHookGestureActive { get { return dragging && hookOwned; } }
+
+        // Called only after a left down inside the native magnifier preview.
+        internal bool StartFromHook(Point at)
+        {
+            if (dragging || !viewer.CanStartPreviewGesture(at)) return false;
+            BeginGesture(at, true);
+            return true;
+        }
+
+        internal bool MoveFromHook(Point at)
+        {
+            if (!IsHookGestureActive) return false;
+            ApplyDragPosition(at);
+            return true;
+        }
+
+        internal bool EndFromHook(Point at)
+        {
+            if (!IsHookGestureActive) return false;
+            ApplyDragPosition(at);
+            FinishGesture(true);
+            return true;
+        }
+
+        private void BeginGesture(Point at, bool fromHook)
+        {
+            viewer.ActivateViewerFromPreview();
+            bool second = IsSecondClick(at);
+            firstClickCandidate = false;
+            currentGesture = second && viewer.DragVoiceEnabled
+                ? Gesture.VoiceRate
+                : (viewer.DragZoomEnabled ? Gesture.Zoom : Gesture.None);
+            pressPoint = at;
+            pressTicks = Environment.TickCount;
+            appliedSteps = 0;
+            changed = false;
+            startZoom = viewer.DragStartZoom;
+            startVoiceRate = viewer.DragStartVoiceRate;
+            hookOwned = fromHook;
+            dragging = true;
+            if (!fromHook) WinMagApi.SetCapture(Handle);
+            if (currentGesture == Gesture.VoiceRate)
+                viewer.BeginGestureVoicePreview();
+        }
+
         protected override void WndProc(ref Message m)
         {
+            // If the low-level hook owns a gesture, these messages are duplicates.
+            if (hookOwned && (m.Msg == WM_MOUSEMOVE || m.Msg == WM_LBUTTONUP
+                           || m.Msg == WM_LBUTTONDOWN || m.Msg == WM_LBUTTONDBLCLK))
+            {
+                m.Result = IntPtr.Zero;
+                return;
+            }
             switch (m.Msg)
             {
                 case WM_NCHITTEST:
@@ -331,43 +383,16 @@ namespace Win11Magnifier
                 case WM_LBUTTONDOWN:
                 case WM_LBUTTONDBLCLK:
                     if (!dragging)
-                    {
-                        // Ensure the normal top-level Form becomes active when its
-                        // native Magnifier child is clicked. Windows itself then handles
-                        // Win+Arrows / Win+Z, including quarter-screen snapping.
-                        viewer.ActivateViewerFromPreview();
-                        Point at = Cursor.Position; // Screen coordinates, may be negative.
-                        bool second = IsSecondClick(at);
-                        // Never assume WM_LBUTTONDBLCLK exists for this native child.
-                        // Even when Windows sends it, do not misinterpret a previous
-                        // drag as a double click.
-                        firstClickCandidate = false;
-                        currentGesture = second && viewer.DragVoiceEnabled
-                            ? Gesture.VoiceRate
-                            : (viewer.DragZoomEnabled ? Gesture.Zoom : Gesture.None);
-                        pressPoint = at;
-                        pressTicks = Environment.TickCount;
-                        appliedSteps = 0;
-                        changed = false;
-                        startZoom = viewer.DragStartZoom;
-                        startVoiceRate = viewer.DragStartVoiceRate;
-                        dragging = true; // Track small first clicks, too.
-                        WinMagApi.SetCapture(Handle);
-                        if (currentGesture == Gesture.VoiceRate)
-                            viewer.BeginGestureVoicePreview();
-                    }
+                        BeginGesture(Cursor.Position, false);
                     m.Result = IntPtr.Zero;
                     return;
                 case WM_MOUSEMOVE:
                     if (dragging)
                     {
                         if ((m.WParam.ToInt64() & MK_LBUTTON) == 0)
-                        {
                             FinishGesture(false);
-                            m.Result = IntPtr.Zero;
-                            return;
-                        }
-                        ApplyDragPosition(Cursor.Position);
+                        else
+                            ApplyDragPosition(Cursor.Position);
                         m.Result = IntPtr.Zero;
                         return;
                     }
@@ -382,8 +407,7 @@ namespace Win11Magnifier
                     return;
                 case WM_CAPTURECHANGED:
                 case WM_CANCELMODE:
-                    // Do not treat interrupted mouse captures as a completed click.
-                    if (dragging) FinishGesture(false);
+                    if (dragging && !hookOwned) FinishGesture(false);
                     m.Result = IntPtr.Zero;
                     return;
             }
@@ -392,7 +416,7 @@ namespace Win11Magnifier
 
         private void ApplyDragPosition(Point at)
         {
-            int steps = (at.X - pressPoint.X) / PIXELS_PER_STEP;
+            int steps = MagnifierGestureMath.HorizontalSteps(at.X - pressPoint.X);
             if (steps == appliedSteps) return;
             appliedSteps = steps;
             if (currentGesture == Gesture.Zoom)
@@ -411,7 +435,7 @@ namespace Win11Magnifier
         {
             if (!dragging) return;
             Point at = Cursor.Position;
-            bool isCleanClick = releasedNormally &&
+            bool clean = releasedNormally &&
                 Math.Abs(at.X - pressPoint.X) <= MAX_CLICK_MOVEMENT &&
                 Math.Abs(at.Y - pressPoint.Y) <= MAX_CLICK_MOVEMENT &&
                 appliedSteps == 0 && !changed;
@@ -419,21 +443,18 @@ namespace Win11Magnifier
             bool save = changed;
             dragging = false;
             changed = false;
+            hookOwned = false;
             currentGesture = Gesture.None;
             if (WinMagApi.GetCapture() == Handle)
                 WinMagApi.ReleaseCapture();
-
-            // A completed first click can start a double-click gesture.
-            // A completed VoiceRate gesture is never the first click of another.
-            firstClickCandidate = isCleanClick && finished != Gesture.VoiceRate;
+            firstClickCandidate = clean && finished != Gesture.VoiceRate;
             if (firstClickCandidate)
             {
                 firstClickPoint = pressPoint;
                 firstClickPressedTicks = pressTicks;
             }
             viewer.EndGesturePreview(finished == Gesture.VoiceRate);
-            if (save)
-                viewer.CommitPreviewDragGesture();
+            if (save) viewer.CommitPreviewDragGesture();
         }
 
         internal bool IsDragging { get { return dragging; } }
@@ -443,6 +464,11 @@ namespace Win11Magnifier
             FinishGesture(false);
             if (Handle != IntPtr.Zero) ReleaseHandle();
         }
+    }
+
+    internal static class MagnifierGestureMath
+    {
+        internal static int HorizontalSteps(int deltaPixels) { return deltaPixels / 24; }
     }
 
     internal sealed class DedicatedViewer : Form
@@ -898,6 +924,27 @@ namespace Win11Magnifier
             if (!closing && !IsDisposed && !ContainsFocus)
                 Activate();
         }
+        internal bool CanStartPreviewGesture(Point screenPoint)
+        {
+            if (closing || IsDisposed || magHandle == IntPtr.Zero ||
+                WindowState == FormWindowState.Minimized || !Visible ||
+                !(dragZoomEnabled || dragVoiceEnabled)) return false;
+            return viewSpace.RectangleToScreen(viewSpace.ClientRectangle).Contains(screenPoint);
+        }
+
+        internal bool IsPreviewHookGestureActive {
+            get { return previewInput != null && previewInput.IsHookGestureActive; }
+        }
+
+        internal bool ForwardPreviewMouse(int msg, Point screenPoint)
+        {
+            if (previewInput == null) return false;
+            if (msg == 0x0201) return previewInput.StartFromHook(screenPoint);
+            if (msg == 0x0200) return previewInput.MoveFromHook(screenPoint);
+            if (msg == 0x0202) return previewInput.EndFromHook(screenPoint);
+            return false;
+        }
+
 
         // Gesture settings are persisted once on mouse release to avoid disk churn.
         internal float DragStartZoom { get { return zoom; } }
