@@ -69,6 +69,17 @@ Check(legacyIni.reading.mode==ReadingModes.Off && legacyIni.reading.dwellMillise
     "legacy English INI values remain compatible");
 Check(PortableIni.Write(legacyIni).Contains("読み上げ速度=6"),"legacy English INI is exported with Japanese keys");
 Check(Path.GetFileName(AppSettings.SettingsFile)=="settings.ini","portable configuration path uses settings.ini beside exe");
+Check(AppSettings.ResolveSettingsFile(
+    @"C:\Program Files\日本語拡大鏡\", @"C:\Program Files", @"C:\Program Files (x86)",
+    @"C:\Users\example\AppData\Local")==
+    @"C:\Users\example\AppData\Local\日本語拡大鏡\settings.ini",
+    "installed 64-bit Japanese magnifier saves settings in user-writable AppData");
+Check(AppSettings.ResolveSettingsFile(
+    @"C:\Users\example\Desktop\日本語拡大鏡\", @"C:\Program Files",
+    @"C:\Program Files (x86)", @"C:\Users\example\AppData\Local")==
+    @"C:\Users\example\Desktop\日本語拡大鏡\settings.ini",
+    "extracted portable folder retains beside-EXE settings compatibility");
+
 try {AppSettings.Normalize(new AppSettings{version=99}); throw new Exception("FAIL: invalid schema accepted");}
 catch(InvalidDataException) {Console.WriteLine("PASS: settings version rejected");}
 using var bmp=new Bitmap(600,500);
