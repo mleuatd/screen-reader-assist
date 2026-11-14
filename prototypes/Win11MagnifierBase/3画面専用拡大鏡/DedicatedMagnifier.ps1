@@ -10,6 +10,9 @@ try {
     if (-not (Test-Path -LiteralPath $path)) {
         throw '専用拡大鏡のソースファイルが見つかりません。'
     }
+    # The global Alt+right selection spawns a separate OCR worker.
+    # Use an explicit bundle directory instead of PowerShell's system32 home.
+    $env:SRA_MAGNIFIER_DIRECTORY = $PSScriptRoot
     Set-Location -LiteralPath $PSScriptRoot
     # Resolve framework libraries through the GAC: bare DLL names do not
     # reliably resolve on all supported Windows installations.
