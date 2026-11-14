@@ -14,6 +14,9 @@ jobs:
       - name: オフライン動作の静的監査（通信API・クラウドSDKを禁止）
         shell: pwsh
         run: ./scripts/Verify-OfflineRuntime.ps1
+      - name: Cドライブ日本語インストーラーの構文と配布要件を監査
+        shell: pwsh
+        run: ./scripts/Verify-CDriveInstaller.ps1
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
@@ -114,3 +117,31 @@ jobs:
           set -euo pipefail
           test -s preview/ScreenReaderAssist-win-x64.zip
           gh release create tryout-20261115 preview/ScreenReaderAssist-win-x64.zip --target "$GITHUB_SHA" --prerelease --title "Windows 11 magnifier + offline Japanese OCR (test build)" --notes "Extract ZIP and double-click 拡大鏡実行.bat. Rate gestures are synchronized across the two bundled processes. This is a test build; Windows 11 three-monitor GUI operation is not yet manually certified."
+
+  publish-cdrive-hud-tryout:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, 'C-drive HUD') }}
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: ScreenReaderAssist-win-x64
+          path: preview
+      - name: Prepare small double-click C-drive installer ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s preview/ScreenReaderAssist-win-x64.zip
+          zip -j -q JapaneseMagnifier-CDrive-Installer.zip "installer/日本語拡大鏡_インストール.bat" installer/Install-Magnifier-CDrive.ps1
+          unzip -l JapaneseMagnifier-CDrive-Installer.zip
+      - name: Publish Windows 11 Japanese magnifier and installer
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh release create tryout-20261115-hud preview/ScreenReaderAssist-win-x64.zip JapaneseMagnifier-CDrive-Installer.zip --target "$GITHUB_SHA" --prerelease --title "Windows 11 Japanese Magnifier - C drive HUD test build" --notes "Windows 11 x64: download the small installer ZIP, extract and run 日本語拡大鏡_インストール.bat. It installs under C:\\Program Files\\日本語拡大鏡, creates a desktop shortcut, and preserves old versions for rollback. Runtime magnification, Japanese OCR and voice are offline. The central zoom/rate display and spoken sample during second-click drag are experimental and require manual three-monitor testing."
