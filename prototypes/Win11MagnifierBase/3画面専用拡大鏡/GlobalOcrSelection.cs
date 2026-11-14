@@ -51,6 +51,7 @@ namespace Win11Magnifier
         private Rectangle pendingRectangle;
         private Point pendingClick;
         private System.Windows.Forms.Timer captureDelay;
+        private long selectionStartedAt;
 
         [StructLayout(LayoutKind.Sequential)]
         private struct LowLevelPoint { public int x; public int y; }
@@ -124,6 +125,26 @@ namespace Win11Magnifier
             try
             {
                 int msg = message.ToInt32();
+                // The Windows Magnifier HWND does not reliably dispatch mouse
+                // events to its native subclass. Reuse this already-installed
+                // low-level listener for gestures that originate in the preview.
+                // Never swallow any click outside the magnifier preview.
+                if (msg == WM_LBUTTONDOWN &&
+                    !selecting && !Pressed(VK_MENU) && !Pressed(VK_CONTROL) &&
+                    !Pressed(VK_LWIN) && !Pressed(VK_RWIN))
+                {
+                    LowLevelMouseInfo preview = (LowLevelMouseInfo)Marshal.PtrToStructure(info,typeof(LowLevelMouseInfo));
+                    if(owner.ForwardPreviewMouse(msg,new Point(preview.pt.x,preview.pt.y)))
+                        return new IntPtr(1);
+                }
+                if ((msg == WM_MOUSEMOVE || msg == WM_LBUTTONUP) &&
+                    owner.IsPreviewHookGestureActive)
+                {
+                    LowLevelMouseInfo preview = (LowLevelMouseInfo)Marshal.PtrToStructure(info,typeof(LowLevelMouseInfo));
+                    if(owner.ForwardPreviewMouse(msg,new Point(preview.pt.x,preview.pt.y)))
+                        return new IntPtr(1);
+                }
+
                 if ((msg == WM_LBUTTONDOWN || msg == WM_RBUTTONDOWN) &&
                     !selecting && enabled && !busy &&
                     Pressed(VK_MENU) && !Pressed(VK_CONTROL) &&
@@ -135,6 +156,7 @@ namespace Win11Magnifier
                     selectionButtonKey = msg == WM_RBUTTONDOWN ? VK_RBUTTON : VK_LBUTTON;
                     selectionButtonUpMessage = msg == WM_RBUTTONDOWN ? WM_RBUTTONUP : WM_LBUTTONUP;
                     selecting = true;
+                    selectionStartedAt = Environment.TickCount64;
                     outlineVisible = false;
                     // Suppress only gestures started as Alt+left or Alt+right mouse down.
                     // The target app must not receive a stray click/context menu.
@@ -178,9 +200,13 @@ namespace Win11Magnifier
         private void RefreshOutline()
         {
             if (disposed) return;
-            if (selecting && (!Pressed(selectionButtonKey) || Pressed(VK_ESCAPE)))
+            // The original mouse DOWN is intentionally swallowed by the hook,
+            // so GetAsyncKeyState(button) cannot reliably indicate that it is
+            // still held. Only the matching UP or Esc ends this gesture.
+            if (selecting && (Pressed(VK_ESCAPE) ||
+                Environment.TickCount64 - selectionStartedAt > 30000))
             {
-                CancelSelection(); // Missed mouse-up or user requested cancel.
+                CancelSelection();
                 return;
             }
             if (!selecting) return;
@@ -319,9 +345,11 @@ namespace Win11Magnifier
                         graphics.CopyFromScreen(clip.Left, clip.Top, 0, 0, bmp.Size, CopyPixelOperation.SourceCopy);
                     bmp.Save(imageFile, System.Drawing.Imaging.ImageFormat.Png);
                 }
-                string script = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "RecognizeSelection.ps1");
-                // Add-Type compiles source in the PowerShell host; the script lives
-                // alongside the source, not necessarily the PowerShell CWD.
+                // AppDomain.BaseDirectory for PowerShell normally points to its
+                // system directory, NOT the bundled magnifier directory.
+                string bundleDirectory = Environment.GetEnvironmentVariable("SRA_MAGNIFIER_DIRECTORY");
+                string script = String.IsNullOrEmpty(bundleDirectory) ? "" :
+                    Path.Combine(bundleDirectory, "RecognizeSelection.ps1");
                 if (!File.Exists(script))
                 {
                     string known = Path.Combine(Environment.CurrentDirectory, "RecognizeSelection.ps1");
