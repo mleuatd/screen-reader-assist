@@ -104,6 +104,10 @@ Check(hoverRect.Contains(new Point(430,210)) && hoverRect.Width==440 && hoverRec
 Check(SelectionGeometry.AroundTap(new Point(1198,899),new Rectangle(0,0,1200,900),440,180).Bottom==900,"hover region clips near desktop edge");
 Check(new AppSettings().reading.mode==ReadingModes.Selection,"manual selection is the default; unsolicited auto reading disabled");
 Check(!new AppSettings().reading.autoReadEnabled,"cursor auto speech requires explicit opt-in");
+Check(new AppSettings().reading.dwellMilliseconds==300,"fast hover default is 300 ms");
+Check(AppSettings.Normalize(new AppSettings{reading=new ReadingSettings{dwellMilliseconds=100}}).reading.dwellMilliseconds==200,"hover delay lower bound is 200 ms");
+Check(AppSettings.Normalize(new AppSettings{reading=new ReadingSettings{dwellMilliseconds=250}}).reading.dwellMilliseconds==250,"hover delay 250 ms remains configurable");
+Check(PortableIni.Parse("[読み取り動作]\nカーソル停止時間（ミリ秒）=200\n").reading.dwellMilliseconds==200,"INI retains 200 ms opt-in fast hover");
 Check(!PortableIni.Parse("[読み取り動作]\n読み取りモード=カーソルで自動読み上げ\n").reading.autoReadEnabled,
     "legacy auto reading mode alone does not opt in");
 Check(PortableIni.Parse("[読み取り動作]\nカーソル自動読み上げを許可=はい\n").reading.autoReadEnabled,
