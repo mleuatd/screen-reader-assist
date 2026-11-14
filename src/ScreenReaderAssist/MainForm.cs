@@ -28,9 +28,9 @@ public sealed class MainForm : Form
     private readonly SemaphoreSlim _hoverGate = new(1,1);
     private string _lastHoverSpoken="";
     private string _lastText="";
-    private readonly System.Windows.Forms.Timer _cursorTimer = new() { Interval=100 };
+    private readonly System.Windows.Forms.Timer _cursorTimer = new() { Interval=50 };
     private readonly ComboBox _readingMode = new() { DropDownStyle=ComboBoxStyle.DropDownList, Width=340 };
-    private readonly NumericUpDown _hoverDelay = new() { Minimum=400,Maximum=2000,Increment=100,Width=100 };
+    private readonly NumericUpDown _hoverDelay = new() { Minimum=200,Maximum=2000,Increment=50,Width=100 };
     private readonly CheckBox _ocrFallback = new() { Text="デジタル文字がなければ画像OCRも試す",AutoSize=true };
     private readonly CheckBox _autoRead = new() {
         Text="カーソルを止めたら自動読み上げ（既定OFF・明示的に有効にする）",
@@ -41,6 +41,7 @@ public sealed class MainForm : Form
     private bool _hoverBusy,_hoverAttempted,_loadingMode;
     private int _cursorGeneration;
     private string _lastAutoText="";
+    private Point _lastAutoPoint=new(-100000,-100000);
     private readonly ToolStripMenuItem _modeMenu = new("読み上げモード");
     private readonly ToolStripMenuItem _autoMenu = new("カーソル自動読み上げを許可");
     private readonly TextBox _diagnosticEvents = new() {
@@ -425,6 +426,14 @@ public sealed class MainForm : Form
             _cursorGeneration++;
             return;
         }
+        // Never initiate hover OCR during a drag or while a mouse button is held.
+        // Reset the dwell clock when the user finishes interacting.
+        if(Control.MouseButtons!=MouseButtons.None) {
+            _pointerMovedAt=now;
+            _hoverAttempted=false;
+            _cursorGeneration++;
+            return;
+        }
         if(_hoverBusy || _hoverAttempted || now-_pointerMovedAt<_settings.reading.dwellMilliseconds) return;
         _hoverAttempted=true;
         _=ReadCursorAsync(point,_cursorGeneration,_settings.reading.mode);
@@ -476,8 +485,11 @@ public sealed class MainForm : Form
                 DiagnosticLog.Warn("カーソル読み取り",$"文字を検出できませんでした。所要時間={watch.ElapsedMilliseconds}ms。");
                 return;
             }
-            if(value==_lastAutoText)return;
+            // A new control can have the same label; only suppress repeats at the same location.
+            if(value==_lastAutoText && Math.Abs(point.X-_lastAutoPoint.X)<=20 &&
+                Math.Abs(point.Y-_lastAutoPoint.Y)<=20)return;
             _lastAutoText=value;
+            _lastAutoPoint=point;
             _lastText=value;
             _last.Text=value;
             DiagnosticLog.Info("カーソル読み取り",$"文字を取得しました。文字数={value.Length}、所要時間={watch.ElapsedMilliseconds}ms。");
