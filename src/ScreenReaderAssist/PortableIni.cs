@@ -100,6 +100,10 @@ public static class PortableIni
                 case ("magnifier","enabletripleclick"):
                     // Retired feature: AppSettings.Normalize always disables it.
                     break;
+                case ("読み取り動作","カーソル自動読み上げを許可"):
+                case ("reading","autoreadenabled"):
+                    if(TryToggle(val,out var autoRead))config.reading.autoReadEnabled=autoRead;
+                    break;
                 case ("読み取り動作","読み取りモード"):
                 case ("reading","mode"):
                     config.reading.mode=ParseMode(val);break;
@@ -131,6 +135,8 @@ public static class PortableIni
         sb.AppendLine("[読み取り動作]");
         sb.AppendLine("; 選択肢：カーソルで自動読み上げ／漫画の吹き出し／範囲選択のみ／自動読み上げ停止");
         sb.AppendLine("読み取りモード="+WriteMode(s.reading.mode));
+        sb.AppendLine("; 意図しない読み上げ防止のため初期設定はいいえ。従来の設定も明示許可がなければOFF。");
+        sb.AppendLine("カーソル自動読み上げを許可="+Toggle(s.reading.autoReadEnabled));
         sb.AppendLine("; カーソルを止めてから読み始めるまでの時間（400～2000ミリ秒）");
         sb.AppendLine("カーソル停止時間（ミリ秒）="+s.reading.dwellMilliseconds.ToString(Inv));
         sb.AppendLine("画像の文字も読み取る="+Toggle(s.reading.ocrFallback));

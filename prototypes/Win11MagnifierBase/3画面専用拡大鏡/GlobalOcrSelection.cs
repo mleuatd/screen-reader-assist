@@ -5,6 +5,7 @@
 // the magnifier UI remains responsive and Windows OCR failures stay isolated.
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
@@ -51,6 +52,7 @@ namespace Win11Magnifier
         private Rectangle pendingRectangle;
         private Point pendingClick;
         private System.Windows.Forms.Timer captureDelay;
+        private int selectionStartedAt;
 
         [StructLayout(LayoutKind.Sequential)]
         private struct LowLevelPoint { public int x; public int y; }
@@ -124,6 +126,26 @@ namespace Win11Magnifier
             try
             {
                 int msg = message.ToInt32();
+                // The Windows Magnifier HWND does not reliably dispatch mouse
+                // events to its native subclass. Reuse this already-installed
+                // low-level listener for gestures that originate in the preview.
+                // Never swallow any click outside the magnifier preview.
+                if (msg == WM_LBUTTONDOWN &&
+                    !selecting && !Pressed(VK_MENU) && !Pressed(VK_CONTROL) &&
+                    !Pressed(VK_LWIN) && !Pressed(VK_RWIN))
+                {
+                    LowLevelMouseInfo preview = (LowLevelMouseInfo)Marshal.PtrToStructure(info,typeof(LowLevelMouseInfo));
+                    if(owner.ForwardPreviewMouse(msg,new Point(preview.pt.x,preview.pt.y)))
+                        return new IntPtr(1);
+                }
+                if ((msg == WM_MOUSEMOVE || msg == WM_LBUTTONUP) &&
+                    owner.IsPreviewHookGestureActive)
+                {
+                    LowLevelMouseInfo preview = (LowLevelMouseInfo)Marshal.PtrToStructure(info,typeof(LowLevelMouseInfo));
+                    if(owner.ForwardPreviewMouse(msg,new Point(preview.pt.x,preview.pt.y)))
+                        return new IntPtr(1);
+                }
+
                 if ((msg == WM_LBUTTONDOWN || msg == WM_RBUTTONDOWN) &&
                     !selecting && enabled && !busy &&
                     Pressed(VK_MENU) && !Pressed(VK_CONTROL) &&
@@ -135,6 +157,7 @@ namespace Win11Magnifier
                     selectionButtonKey = msg == WM_RBUTTONDOWN ? VK_RBUTTON : VK_LBUTTON;
                     selectionButtonUpMessage = msg == WM_RBUTTONDOWN ? WM_RBUTTONUP : WM_LBUTTONUP;
                     selecting = true;
+                    selectionStartedAt = Environment.TickCount;
                     outlineVisible = false;
                     // Suppress only gestures started as Alt+left or Alt+right mouse down.
                     // The target app must not receive a stray click/context menu.
@@ -178,9 +201,13 @@ namespace Win11Magnifier
         private void RefreshOutline()
         {
             if (disposed) return;
-            if (selecting && (!Pressed(selectionButtonKey) || Pressed(VK_ESCAPE)))
+            // The original mouse DOWN is intentionally swallowed by the hook,
+            // so GetAsyncKeyState(button) cannot reliably indicate that it is
+            // still held. Only the matching UP or Esc ends this gesture.
+            if (selecting && (Pressed(VK_ESCAPE) ||
+                unchecked(Environment.TickCount - selectionStartedAt) > 30000))
             {
-                CancelSelection(); // Missed mouse-up or user requested cancel.
+                CancelSelection();
                 return;
             }
             if (!selecting) return;
@@ -304,6 +331,8 @@ namespace Win11Magnifier
 
         private static string RunLocalOcr(Rectangle clip)
         {
+            Stopwatch timing=Stopwatch.StartNew();
+            long screenshotMs=0, pngMs=0, workerMs=0;
             string dir = Path.Combine(Path.GetTempPath(), "Win11MagnifierOcr");
             Directory.CreateDirectory(dir);
             string id = Guid.NewGuid().ToString("N");
@@ -317,11 +346,15 @@ namespace Win11Magnifier
                 {
                     using (Graphics graphics = Graphics.FromImage(bmp))
                         graphics.CopyFromScreen(clip.Left, clip.Top, 0, 0, bmp.Size, CopyPixelOperation.SourceCopy);
+                    screenshotMs=timing.ElapsedMilliseconds;
                     bmp.Save(imageFile, System.Drawing.Imaging.ImageFormat.Png);
+                    pngMs=timing.ElapsedMilliseconds-screenshotMs;
                 }
-                string script = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "RecognizeSelection.ps1");
-                // Add-Type compiles source in the PowerShell host; the script lives
-                // alongside the source, not necessarily the PowerShell CWD.
+                // AppDomain.BaseDirectory for PowerShell normally points to its
+                // system directory, NOT the bundled magnifier directory.
+                string bundleDirectory = Environment.GetEnvironmentVariable("SRA_MAGNIFIER_DIRECTORY");
+                string script = String.IsNullOrEmpty(bundleDirectory) ? "" :
+                    Path.Combine(bundleDirectory, "RecognizeSelection.ps1");
                 if (!File.Exists(script))
                 {
                     string known = Path.Combine(Environment.CurrentDirectory, "RecognizeSelection.ps1");
@@ -339,6 +372,7 @@ namespace Win11Magnifier
                 start.UseShellExecute = false;
                 start.CreateNoWindow = true;
                 start.WindowStyle = ProcessWindowStyle.Hidden;
+                long workerStart=timing.ElapsedMilliseconds;
                 using (Process p = Process.Start(start))
                 {
                     if (!p.WaitForExit(18000))
@@ -352,14 +386,39 @@ namespace Win11Magnifier
                         throw new InvalidOperationException(message.Trim());
                     }
                 }
+                workerMs=timing.ElapsedMilliseconds-workerStart;
                 return File.Exists(resultFile) ? File.ReadAllText(resultFile, Encoding.UTF8) : "";
             }
             finally
             {
+                RecordOcrPerformance(screenshotMs,pngMs,workerMs,timing.ElapsedMilliseconds);
                 try { if (File.Exists(imageFile)) File.Delete(imageFile); } catch { }
                 try { if (File.Exists(resultFile)) File.Delete(resultFile); } catch { }
                 try { if (File.Exists(errorFile)) File.Delete(errorFile); } catch { }
             }
+        }
+
+        private static void RecordOcrPerformance(long capture,long encode,long worker,long total)
+        {
+            // Deliberately log timings only. Do not save screen contents,
+            // recognized text, cursor coordinates, or image paths.
+            try
+            {
+                string directory=Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "日本語拡大鏡");
+                Directory.CreateDirectory(directory);
+                string report=Path.Combine(directory,"ocr-performance.log");
+                string line=DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss",CultureInfo.InvariantCulture) +
+                    " 日本語OCR: capture=" + capture.ToString(CultureInfo.InvariantCulture) +
+                    "ms png=" + encode.ToString(CultureInfo.InvariantCulture) +
+                    "ms powershell+recognition=" + worker.ToString(CultureInfo.InvariantCulture) +
+                    "ms total=" + total.ToString(CultureInfo.InvariantCulture) + "ms" +
+                    Environment.NewLine;
+                File.AppendAllText(report,line,Encoding.UTF8);
+            }
+            catch(IOException) { }
+            catch(UnauthorizedAccessException) { }
         }
 
         private static string Quote(string value) { return "\"" + value.Replace("\"", "\\\"") + "\""; }

@@ -97,7 +97,10 @@ public sealed class MagnifierSettings
 
 public sealed class ReadingSettings
 {
-    public string mode { get; set; } = ReadingModes.Cursor;
+    // Older installs might still store mode=cursor. Never enable unsolicited
+    // hover speech unless the user explicitly opts in via this separate flag.
+    public bool autoReadEnabled { get; set; } = false;
+    public string mode { get; set; } = ReadingModes.Selection;
     public int dwellMilliseconds { get; set; } = 750;
     public bool ocrFallback { get; set; } = true;
 }

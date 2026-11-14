@@ -23,4 +23,29 @@ $compiled=[AppDomain]::CurrentDomain.GetAssemblies() |
     ForEach-Object { $_.GetType('Win11Magnifier.GlobalOcrSelection',$false) } |
     Where-Object { $null -ne $_ } | Select-Object -First 1
 if(-not $compiled){throw 'Magnifier hook type was not compiled'}
-Write-Host 'PASS: Original three-monitor magnifier and Alt-right green selection compile under Windows PowerShell 5.1.'
+$gesture=[AppDomain]::CurrentDomain.GetAssemblies() |
+    ForEach-Object { $_.GetType('Win11Magnifier.MagnifierGestureMath',$false) } |
+    Where-Object { $null -ne $_ } | Select-Object -First 1
+if(-not $gesture){throw 'Magnifier gesture math was not compiled'}
+$method=$gesture.GetMethod('HorizontalSteps',[System.Reflection.BindingFlags]'Static,NonPublic')
+if(-not $method){throw 'Horizontal drag thresholds cannot be tested'}
+foreach($case in @(
+    @{ pixels=23; expected=0 },
+    @{ pixels=24; expected=1 },
+    @{ pixels=72; expected=3 },
+    @{ pixels=-48; expected=-2 },
+    @{ pixels=-23; expected=0 }
+)) {
+    $actual=[int]$method.Invoke($null,@([int]$case.pixels))
+    if($actual -ne $case.expected) {
+        throw "Incorrect horizontal gesture at $($case.pixels) px: $actual (expected $($case.expected))"
+    }
+}
+$viewer=[AppDomain]::CurrentDomain.GetAssemblies() |
+    ForEach-Object { $_.GetType('Win11Magnifier.DedicatedViewer',$false) } |
+    Where-Object { $null -ne $_ } | Select-Object -First 1
+if(-not $viewer.GetMethod('ForwardPreviewMouse',[System.Reflection.BindingFlags]'Instance,NonPublic')) {
+    throw 'Magnifier mouse gestures are not connected to global hook'
+}
+Write-Host 'PASS: Japanese magnifier Alt+right selection and global preview gesture hook compile.'
+Write-Host 'PASS: 24px horizontal steps, negative drag direction and edge thresholds verified.'

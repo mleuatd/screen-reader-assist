@@ -14,7 +14,7 @@ public sealed class SelectionForm : Form
     private Point _hoverLocal;
     private Point _lastMouseLocal = new(-1000,-1000);
     public int HoverVersion { get; private set; }
-    public bool HoverEnabled { get; private set; } = true;
+    public bool HoverEnabled { get; private set; } = false; // User must press H to enable automatic hover speech.
     public event Action<Point,int>? HoverRequested;
     public Point? ChosenTapScreenPoint { get; private set; }
     public Rectangle? ChosenScreenBounds { get; private set; }

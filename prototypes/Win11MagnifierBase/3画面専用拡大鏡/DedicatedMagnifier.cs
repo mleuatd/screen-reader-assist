@@ -262,11 +262,9 @@ namespace Win11Magnifier
         }
     }
 
-    // Native Magnifier child window input. Neither source monitor receives mouse input
-    // nor does this app use system-wide mouse hooks or synthetic clicks.
-    // Click+drag => zoom. Click, release, second click+drag => speech rate.
-    // A timed, distance-limited fallback detects double clicks even if the native
-    // Magnifier class doesn't have CS_DBLCLKS.
+    // Native magnifier windows may not deliver ordinary mouse messages.
+    // The already-installed WH_MOUSE_LL listener forwards clicks inside the
+    // preview to this controller. Native-window messages remain as a fallback.
     internal sealed class PreviewDragInput : NativeWindow
     {
         private const int WM_MOUSEMOVE = 0x0200;
@@ -279,14 +277,15 @@ namespace Win11Magnifier
         private const int WM_CAPTURECHANGED = 0x0215;
         private const int WM_CANCELMODE = 0x001F;
         private const int MK_LBUTTON = 0x0001;
-        private const int PIXELS_PER_STEP = 48;
-        private const float ZOOM_PER_STEP = 0.10f; // +10 percentage points.
+        private const int PIXELS_PER_STEP = 24;
+        private const float ZOOM_PER_STEP = 0.10f;
         private const int MAX_CLICK_MOVEMENT = 12;
 
         private enum Gesture { None, Zoom, VoiceRate }
         private readonly DedicatedViewer viewer;
         private Gesture currentGesture = Gesture.None;
         private bool dragging;
+        private bool hookOwned;
         private bool changed;
         private Point pressPoint;
         private float startZoom;
@@ -313,8 +312,61 @@ namespace Win11Magnifier
                 && Math.Abs(position.Y - firstClickPoint.Y) <= Math.Max(3, size.Height / 2);
         }
 
+        internal bool IsHookGestureActive { get { return dragging && hookOwned; } }
+
+        // Called only after a left down inside the native magnifier preview.
+        internal bool StartFromHook(Point at)
+        {
+            if (dragging || !viewer.CanStartPreviewGesture(at)) return false;
+            BeginGesture(at, true);
+            return true;
+        }
+
+        internal bool MoveFromHook(Point at)
+        {
+            if (!IsHookGestureActive) return false;
+            ApplyDragPosition(at);
+            return true;
+        }
+
+        internal bool EndFromHook(Point at)
+        {
+            if (!IsHookGestureActive) return false;
+            ApplyDragPosition(at);
+            FinishGesture(true);
+            return true;
+        }
+
+        private void BeginGesture(Point at, bool fromHook)
+        {
+            viewer.ActivateViewerFromPreview();
+            bool second = IsSecondClick(at);
+            firstClickCandidate = false;
+            currentGesture = second && viewer.DragVoiceEnabled
+                ? Gesture.VoiceRate
+                : (viewer.DragZoomEnabled ? Gesture.Zoom : Gesture.None);
+            pressPoint = at;
+            pressTicks = Environment.TickCount;
+            appliedSteps = 0;
+            changed = false;
+            startZoom = viewer.DragStartZoom;
+            startVoiceRate = viewer.DragStartVoiceRate;
+            hookOwned = fromHook;
+            dragging = true;
+            if (!fromHook) WinMagApi.SetCapture(Handle);
+            if (currentGesture == Gesture.VoiceRate)
+                viewer.BeginGestureVoicePreview();
+        }
+
         protected override void WndProc(ref Message m)
         {
+            // If the low-level hook owns a gesture, these messages are duplicates.
+            if (hookOwned && (m.Msg == WM_MOUSEMOVE || m.Msg == WM_LBUTTONUP
+                           || m.Msg == WM_LBUTTONDOWN || m.Msg == WM_LBUTTONDBLCLK))
+            {
+                m.Result = IntPtr.Zero;
+                return;
+            }
             switch (m.Msg)
             {
                 case WM_NCHITTEST:
@@ -331,43 +383,16 @@ namespace Win11Magnifier
                 case WM_LBUTTONDOWN:
                 case WM_LBUTTONDBLCLK:
                     if (!dragging)
-                    {
-                        // Ensure the normal top-level Form becomes active when its
-                        // native Magnifier child is clicked. Windows itself then handles
-                        // Win+Arrows / Win+Z, including quarter-screen snapping.
-                        viewer.ActivateViewerFromPreview();
-                        Point at = Cursor.Position; // Screen coordinates, may be negative.
-                        bool second = IsSecondClick(at);
-                        // Never assume WM_LBUTTONDBLCLK exists for this native child.
-                        // Even when Windows sends it, do not misinterpret a previous
-                        // drag as a double click.
-                        firstClickCandidate = false;
-                        currentGesture = second && viewer.DragVoiceEnabled
-                            ? Gesture.VoiceRate
-                            : (viewer.DragZoomEnabled ? Gesture.Zoom : Gesture.None);
-                        pressPoint = at;
-                        pressTicks = Environment.TickCount;
-                        appliedSteps = 0;
-                        changed = false;
-                        startZoom = viewer.DragStartZoom;
-                        startVoiceRate = viewer.DragStartVoiceRate;
-                        dragging = true; // Track small first clicks, too.
-                        WinMagApi.SetCapture(Handle);
-                        if (currentGesture == Gesture.VoiceRate)
-                            viewer.BeginGestureVoicePreview();
-                    }
+                        BeginGesture(Cursor.Position, false);
                     m.Result = IntPtr.Zero;
                     return;
                 case WM_MOUSEMOVE:
                     if (dragging)
                     {
                         if ((m.WParam.ToInt64() & MK_LBUTTON) == 0)
-                        {
                             FinishGesture(false);
-                            m.Result = IntPtr.Zero;
-                            return;
-                        }
-                        ApplyDragPosition(Cursor.Position);
+                        else
+                            ApplyDragPosition(Cursor.Position);
                         m.Result = IntPtr.Zero;
                         return;
                     }
@@ -382,8 +407,7 @@ namespace Win11Magnifier
                     return;
                 case WM_CAPTURECHANGED:
                 case WM_CANCELMODE:
-                    // Do not treat interrupted mouse captures as a completed click.
-                    if (dragging) FinishGesture(false);
+                    if (dragging && !hookOwned) FinishGesture(false);
                     m.Result = IntPtr.Zero;
                     return;
             }
@@ -392,7 +416,7 @@ namespace Win11Magnifier
 
         private void ApplyDragPosition(Point at)
         {
-            int steps = (at.X - pressPoint.X) / PIXELS_PER_STEP;
+            int steps = MagnifierGestureMath.HorizontalSteps(at.X - pressPoint.X);
             if (steps == appliedSteps) return;
             appliedSteps = steps;
             if (currentGesture == Gesture.Zoom)
@@ -411,7 +435,7 @@ namespace Win11Magnifier
         {
             if (!dragging) return;
             Point at = Cursor.Position;
-            bool isCleanClick = releasedNormally &&
+            bool clean = releasedNormally &&
                 Math.Abs(at.X - pressPoint.X) <= MAX_CLICK_MOVEMENT &&
                 Math.Abs(at.Y - pressPoint.Y) <= MAX_CLICK_MOVEMENT &&
                 appliedSteps == 0 && !changed;
@@ -419,21 +443,18 @@ namespace Win11Magnifier
             bool save = changed;
             dragging = false;
             changed = false;
+            hookOwned = false;
             currentGesture = Gesture.None;
             if (WinMagApi.GetCapture() == Handle)
                 WinMagApi.ReleaseCapture();
-
-            // A completed first click can start a double-click gesture.
-            // A completed VoiceRate gesture is never the first click of another.
-            firstClickCandidate = isCleanClick && finished != Gesture.VoiceRate;
+            firstClickCandidate = clean && finished != Gesture.VoiceRate;
             if (firstClickCandidate)
             {
                 firstClickPoint = pressPoint;
                 firstClickPressedTicks = pressTicks;
             }
             viewer.EndGesturePreview(finished == Gesture.VoiceRate);
-            if (save)
-                viewer.CommitPreviewDragGesture();
+            if (save) viewer.CommitPreviewDragGesture();
         }
 
         internal bool IsDragging { get { return dragging; } }
@@ -443,6 +464,11 @@ namespace Win11Magnifier
             FinishGesture(false);
             if (Handle != IntPtr.Zero) ReleaseHandle();
         }
+    }
+
+    internal static class MagnifierGestureMath
+    {
+        internal static int HorizontalSteps(int deltaPixels) { return deltaPixels / 24; }
     }
 
     internal sealed class DedicatedViewer : Form
@@ -471,6 +497,7 @@ namespace Win11Magnifier
         private readonly Timer voicePreviewTimer;
         private readonly Timer hudHideTimer;
         private readonly GestureHud gestureHud;
+        private Form largeControlsWindow;
         private bool voicePreviewActive;
         private const string VoicePreviewPhrase = "テスト再生";
 
@@ -594,6 +621,10 @@ namespace Win11Magnifier
                     ? FormWindowState.Normal : FormWindowState.Maximized;
             };
             bar.Controls.Add(maximizeButton);
+
+            Button largeControlsButton = MakeButton("操作を大きく表示", "倍率と音声速度の大きい操作ボタンを開く", 196);
+            largeControlsButton.Click += delegate { OpenLargeControlPanel(); };
+            bar.Controls.Add(largeControlsButton);
 
             dragToggle = new CheckBox();
             dragToggle.Text = "1回ドラッグ：拡大";
@@ -898,6 +929,29 @@ namespace Win11Magnifier
             if (!closing && !IsDisposed && !ContainsFocus)
                 Activate();
         }
+        internal bool CanStartPreviewGesture(Point screenPoint)
+        {
+            if (closing || IsDisposed || magHandle == IntPtr.Zero ||
+                WindowState == FormWindowState.Minimized || !Visible ||
+                !(dragZoomEnabled || dragVoiceEnabled)) return false;
+            if (largeControlsWindow != null && largeControlsWindow.Visible &&
+                largeControlsWindow.Bounds.Contains(screenPoint)) return false;
+            return viewSpace.RectangleToScreen(viewSpace.ClientRectangle).Contains(screenPoint);
+        }
+
+        internal bool IsPreviewHookGestureActive {
+            get { return previewInput != null && previewInput.IsHookGestureActive; }
+        }
+
+        internal bool ForwardPreviewMouse(int msg, Point screenPoint)
+        {
+            if (previewInput == null) return false;
+            if (msg == 0x0201) return previewInput.StartFromHook(screenPoint);
+            if (msg == 0x0200) return previewInput.MoveFromHook(screenPoint);
+            if (msg == 0x0202) return previewInput.EndFromHook(screenPoint);
+            return false;
+        }
+
 
         // Gesture settings are persisted once on mouse release to avoid disk churn.
         internal float DragStartZoom { get { return zoom; } }
@@ -920,6 +974,105 @@ namespace Win11Magnifier
                 StartVoicePreviewSample();
             }
             return updated;
+        }
+
+        // The displayed image is not a recursive magnifier of its own toolbar.
+        // Offer large real WinForms controls rather than magnifying pixels of
+        // controls displayed on the same screen.
+        private void OpenLargeControlPanel()
+        {
+            if (largeControlsWindow != null && !largeControlsWindow.IsDisposed)
+            {
+                largeControlsWindow.Activate();
+                return;
+            }
+            Form dialog = new Form();
+            largeControlsWindow = dialog;
+            dialog.Text = "拡大鏡の大きい操作画面";
+            dialog.StartPosition = FormStartPosition.CenterParent;
+            dialog.Size = new Size(900, 525);
+            dialog.MinimumSize = new Size(675, 420);
+            dialog.BackColor = Color.FromArgb(17, 23, 35);
+            dialog.ForeColor = Color.White;
+            dialog.Font = new Font("Yu Gothic UI", 19f, FontStyle.Bold);
+            dialog.AutoScaleMode = AutoScaleMode.Font;
+
+            TableLayoutPanel layout = new TableLayoutPanel();
+            layout.Dock = DockStyle.Fill;
+            layout.Padding = new Padding(16);
+            layout.ColumnCount = 3;
+            layout.RowCount = 4;
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.3f));
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.4f));
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.3f));
+            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 20f));
+            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 31f));
+            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 31f));
+            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 18f));
+            dialog.Controls.Add(layout);
+
+            Label help = new Label();
+            help.Text = "倍率と日本語音声の速度を調整できます";
+            help.TextAlign = ContentAlignment.MiddleCenter;
+            help.Dock = DockStyle.Fill;
+            help.AutoSize = false;
+            layout.Controls.Add(help, 0, 0);
+            layout.SetColumnSpan(help, 3);
+
+            Label zoomValue = new Label();
+            zoomValue.TextAlign = ContentAlignment.MiddleCenter;
+            zoomValue.Dock = DockStyle.Fill;
+            zoomValue.AccessibleName = "現在の拡大倍率";
+            layout.Controls.Add(zoomValue, 1, 1);
+            Label rateValue = new Label();
+            rateValue.TextAlign = ContentAlignment.MiddleCenter;
+            rateValue.Dock = DockStyle.Fill;
+            rateValue.AccessibleName = "現在の読み上げ速度";
+            layout.Controls.Add(rateValue, 1, 2);
+            Action updateLabels = delegate {
+                zoomValue.Text = zoom.ToString("0.00", CultureInfo.InvariantCulture) + " 倍";
+                rateValue.Text = "速度 " + (voiceRate >= 0 ? "+" : "") +
+                    voiceRate.ToString(CultureInfo.InvariantCulture);
+            };
+            Action<string, string, int, int, Action> addButton =
+                delegate(string caption, string accessibility, int column, int row, Action action) {
+                    Button button = new Button();
+                    button.Text = caption;
+                    button.AccessibleName = accessibility;
+                    button.Dock = DockStyle.Fill;
+                    button.Margin = new Padding(7);
+                    button.FlatStyle = FlatStyle.Flat;
+                    button.FlatAppearance.BorderColor = Color.FromArgb(97, 223, 165);
+                    button.FlatAppearance.BorderSize = 3;
+                    button.ForeColor = Color.White;
+                    button.BackColor = Color.FromArgb(36, 70, 80);
+                    button.Font = new Font("Yu Gothic UI", 21f, FontStyle.Bold);
+                    button.Click += delegate { action(); updateLabels(); };
+                    layout.Controls.Add(button, column, row);
+                };
+            addButton("倍率 −", "拡大倍率を下げる", 0, 1,
+                delegate { SetZoom(Math.Max(1f, zoom - 0.5f)); });
+            addButton("倍率 ＋", "拡大倍率を上げる", 2, 1,
+                delegate { SetZoom(Math.Min(16f, zoom + 0.5f)); });
+            addButton("遅く", "音声を遅くする", 0, 2,
+                delegate { SetVoiceRate(voiceRate - 1); });
+            addButton("速く", "音声を速くする", 2, 2,
+                delegate { SetVoiceRate(voiceRate + 1); });
+            addButton("閉じる", "大きい操作画面を閉じる", 1, 3, delegate { dialog.Close(); });
+            updateLabels();
+            Timer refresh = new Timer();
+            refresh.Interval = 350;
+            refresh.Tick += delegate {
+                if (!dialog.IsDisposed) updateLabels();
+            };
+            dialog.FormClosed += delegate {
+                refresh.Stop();
+                refresh.Dispose();
+                if (largeControlsWindow == dialog) largeControlsWindow = null;
+                dialog.Dispose();
+            };
+            refresh.Start();
+            dialog.Show(this);
         }
 
         private void ShowGestureHud(bool voice)
@@ -1351,6 +1504,8 @@ namespace Win11Magnifier
             hudHideTimer.Dispose();
             gestureHud.Close();
             gestureHud.Dispose();
+            if (largeControlsWindow != null && !largeControlsWindow.IsDisposed)
+                largeControlsWindow.Close();
             if (speechSynth != null)
             {
                 try { speechSynth.SpeakAsyncCancelAll(); } catch { }
