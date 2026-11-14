@@ -497,6 +497,7 @@ namespace Win11Magnifier
         private readonly Timer voicePreviewTimer;
         private readonly Timer hudHideTimer;
         private readonly GestureHud gestureHud;
+        private Form largeControlsWindow;
         private bool voicePreviewActive;
         private const string VoicePreviewPhrase = "テスト再生";
 
@@ -620,6 +621,10 @@ namespace Win11Magnifier
                     ? FormWindowState.Normal : FormWindowState.Maximized;
             };
             bar.Controls.Add(maximizeButton);
+
+            Button largeControlsButton = MakeButton("操作を大きく表示", "倍率と音声速度の大きい操作ボタンを開く", 196);
+            largeControlsButton.Click += delegate { OpenLargeControlPanel(); };
+            bar.Controls.Add(largeControlsButton);
 
             dragToggle = new CheckBox();
             dragToggle.Text = "1回ドラッグ：拡大";
@@ -929,6 +934,8 @@ namespace Win11Magnifier
             if (closing || IsDisposed || magHandle == IntPtr.Zero ||
                 WindowState == FormWindowState.Minimized || !Visible ||
                 !(dragZoomEnabled || dragVoiceEnabled)) return false;
+            if (largeControlsWindow != null && largeControlsWindow.Visible &&
+                largeControlsWindow.Bounds.Contains(screenPoint)) return false;
             return viewSpace.RectangleToScreen(viewSpace.ClientRectangle).Contains(screenPoint);
         }
 
@@ -967,6 +974,105 @@ namespace Win11Magnifier
                 StartVoicePreviewSample();
             }
             return updated;
+        }
+
+        // The displayed image is not a recursive magnifier of its own toolbar.
+        // Offer large real WinForms controls rather than magnifying pixels of
+        // controls displayed on the same screen.
+        private void OpenLargeControlPanel()
+        {
+            if (largeControlsWindow != null && !largeControlsWindow.IsDisposed)
+            {
+                largeControlsWindow.Activate();
+                return;
+            }
+            Form dialog = new Form();
+            largeControlsWindow = dialog;
+            dialog.Text = "拡大鏡の大きい操作画面";
+            dialog.StartPosition = FormStartPosition.CenterParent;
+            dialog.Size = new Size(900, 525);
+            dialog.MinimumSize = new Size(675, 420);
+            dialog.BackColor = Color.FromArgb(17, 23, 35);
+            dialog.ForeColor = Color.White;
+            dialog.Font = new Font("Yu Gothic UI", 19f, FontStyle.Bold);
+            dialog.AutoScaleMode = AutoScaleMode.Font;
+
+            TableLayoutPanel layout = new TableLayoutPanel();
+            layout.Dock = DockStyle.Fill;
+            layout.Padding = new Padding(16);
+            layout.ColumnCount = 3;
+            layout.RowCount = 4;
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.3f));
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.4f));
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.3f));
+            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 20f));
+            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 31f));
+            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 31f));
+            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 18f));
+            dialog.Controls.Add(layout);
+
+            Label help = new Label();
+            help.Text = "倍率と日本語音声の速度を調整できます";
+            help.TextAlign = ContentAlignment.MiddleCenter;
+            help.Dock = DockStyle.Fill;
+            help.AutoSize = false;
+            layout.Controls.Add(help, 0, 0);
+            layout.SetColumnSpan(help, 3);
+
+            Label zoomValue = new Label();
+            zoomValue.TextAlign = ContentAlignment.MiddleCenter;
+            zoomValue.Dock = DockStyle.Fill;
+            zoomValue.AccessibleName = "現在の拡大倍率";
+            layout.Controls.Add(zoomValue, 1, 1);
+            Label rateValue = new Label();
+            rateValue.TextAlign = ContentAlignment.MiddleCenter;
+            rateValue.Dock = DockStyle.Fill;
+            rateValue.AccessibleName = "現在の読み上げ速度";
+            layout.Controls.Add(rateValue, 1, 2);
+            Action updateLabels = delegate {
+                zoomValue.Text = zoom.ToString("0.00", CultureInfo.InvariantCulture) + " 倍";
+                rateValue.Text = "速度 " + (voiceRate >= 0 ? "+" : "") +
+                    voiceRate.ToString(CultureInfo.InvariantCulture);
+            };
+            Action<string, string, int, int, Action> addButton =
+                delegate(string caption, string accessibility, int column, int row, Action action) {
+                    Button button = new Button();
+                    button.Text = caption;
+                    button.AccessibleName = accessibility;
+                    button.Dock = DockStyle.Fill;
+                    button.Margin = new Padding(7);
+                    button.FlatStyle = FlatStyle.Flat;
+                    button.FlatAppearance.BorderColor = Color.FromArgb(97, 223, 165);
+                    button.FlatAppearance.BorderSize = 3;
+                    button.ForeColor = Color.White;
+                    button.BackColor = Color.FromArgb(36, 70, 80);
+                    button.Font = new Font("Yu Gothic UI", 21f, FontStyle.Bold);
+                    button.Click += delegate { action(); updateLabels(); };
+                    layout.Controls.Add(button, column, row);
+                };
+            addButton("倍率 −", "拡大倍率を下げる", 0, 1,
+                delegate { SetZoom(Math.Max(1f, zoom - 0.5f)); });
+            addButton("倍率 ＋", "拡大倍率を上げる", 2, 1,
+                delegate { SetZoom(Math.Min(16f, zoom + 0.5f)); });
+            addButton("遅く", "音声を遅くする", 0, 2,
+                delegate { SetVoiceRate(voiceRate - 1); });
+            addButton("速く", "音声を速くする", 2, 2,
+                delegate { SetVoiceRate(voiceRate + 1); });
+            addButton("閉じる", "大きい操作画面を閉じる", 1, 3, delegate { dialog.Close(); });
+            updateLabels();
+            Timer refresh = new Timer();
+            refresh.Interval = 350;
+            refresh.Tick += delegate {
+                if (!dialog.IsDisposed) updateLabels();
+            };
+            dialog.FormClosed += delegate {
+                refresh.Stop();
+                refresh.Dispose();
+                if (largeControlsWindow == dialog) largeControlsWindow = null;
+                dialog.Dispose();
+            };
+            refresh.Start();
+            dialog.Show(this);
         }
 
         private void ShowGestureHud(bool voice)
@@ -1398,6 +1504,8 @@ namespace Win11Magnifier
             hudHideTimer.Dispose();
             gestureHud.Close();
             gestureHud.Dispose();
+            if (largeControlsWindow != null && !largeControlsWindow.IsDisposed)
+                largeControlsWindow.Close();
             if (speechSynth != null)
             {
                 try { speechSynth.SpeakAsyncCancelAll(); } catch { }
