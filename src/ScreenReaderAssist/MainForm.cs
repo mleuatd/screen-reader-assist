@@ -32,12 +32,17 @@ public sealed class MainForm : Form
     private readonly ComboBox _readingMode = new() { DropDownStyle=ComboBoxStyle.DropDownList, Width=340 };
     private readonly NumericUpDown _hoverDelay = new() { Minimum=400,Maximum=2000,Increment=100,Width=100 };
     private readonly CheckBox _ocrFallback = new() { Text="デジタル文字がなければ画像OCRも試す",AutoSize=true };
+    private readonly CheckBox _autoRead = new() {
+        Text="カーソルを止めたら自動読み上げ（既定OFF・明示的に有効にする）",
+        AutoSize=true,AccessibleName="カーソル停止での自動読み上げを許可する。初期状態は無効"
+    };
     private Point _lastPointer=new(-100000,-100000);
     private long _pointerMovedAt;
     private bool _hoverBusy,_hoverAttempted,_loadingMode;
     private int _cursorGeneration;
     private string _lastAutoText="";
     private readonly ToolStripMenuItem _modeMenu = new("読み上げモード");
+    private readonly ToolStripMenuItem _autoMenu = new("カーソル自動読み上げを許可");
     private readonly TextBox _diagnosticEvents = new() {
         Multiline=true,ReadOnly=true,ScrollBars=ScrollBars.Both,WordWrap=false,
         Dock=DockStyle.Fill,AccessibleName="リアルタイム診断ログ。起動、ショートカット、OCR、音声再生の状態"
@@ -81,6 +86,8 @@ public sealed class MainForm : Form
             _modeMenu.DropDownItems.Add(ReadingModes.Label(code),null,(_,_)=>SetMode(selected));
         }
         menu.Items.Add(_modeMenu);
+        _autoMenu.Click+=(_,_)=>SetAutoReadEnabled(!_settings.reading.autoReadEnabled);
+        menu.Items.Add(_autoMenu);
         menu.Items.Add("範囲を読み上げ",null,async (_,_)=>await ReadSelection());
         menu.Items.Add("漫画の吹き出しを読む",null,async (_,_)=>await ReadBalloon());
         menu.Items.Add("注目中のUI要素を読む",null,(_,_)=>ReadFocused());
@@ -106,7 +113,7 @@ public sealed class MainForm : Form
         _ = _ocr.WarmUpAsync(); // Background-only; no delay on the first Windows Forms frame.
         _cursorTimer.Tick+=CursorTimerTick;
         _pointerMovedAt=Environment.TickCount64;
-        _cursorTimer.Start();
+        _cursorTimer.Enabled=_settings.reading.autoReadEnabled && ReadingModes.IsAuto(_settings.reading.mode);
         _healthTimer.Tick+=(_,_)=>{ SynchronizeVoiceRate(); RefreshHealth(); };
         _healthTimer.Start();
         DiagnosticLog.Info("常駐","通知領域に常駐しました。設定画面は非表示でも監視を続けます。");
@@ -165,10 +172,10 @@ public sealed class MainForm : Form
     }
     private void BuildForm()
     {
-        var panel=new TableLayoutPanel { Dock=DockStyle.Fill,Padding=new Padding(18),AutoScroll=true,ColumnCount=2,RowCount=18 };
+        var panel=new TableLayoutPanel { Dock=DockStyle.Fill,Padding=new Padding(18),AutoScroll=true,ColumnCount=2,RowCount=19 };
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,185));
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
-        for(int i=0;i<17;i++) panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        for(int i=0;i<18;i++) panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         panel.RowStyles.Add(new RowStyle(SizeType.Percent,100));
         Controls.Add(panel);
         int row=0;
@@ -178,6 +185,10 @@ public sealed class MainForm : Form
         panel.SetColumnSpan(_health,2);
         row++;
         Add("読み上げモード",_readingMode,row++);
+        _autoRead.CheckedChanged+=(_,_)=> {
+            if(!_loadingMode)SetAutoReadEnabled(_autoRead.Checked);
+        };
+        Add("自動読み上げ",_autoRead,row++);
         Add("静止時間（ms）",_hoverDelay,row++);
         Add("画像文字への対応",_ocrFallback,row++);
         Add("読み上げ速度 (-10～10)",_rate,row++);
@@ -246,7 +257,7 @@ public sealed class MainForm : Form
         try {
             if(_readingMode.Items.Count==0) {
                 _readingMode.Items.AddRange(new object[]{
-                    "カーソルで自動読み上げ（標準）",
+                    "カーソル読み上げ（許可をONにすると自動）",
                     "漫画の吹き出しOCR（カーソル）",
                     "範囲選択のみ",
                     "自動読み上げ停止"
@@ -261,6 +272,7 @@ public sealed class MainForm : Form
             _readingMode.SelectedIndex=Array.IndexOf(modes,_settings.reading.mode);
             _hoverDelay.Value=_settings.reading.dwellMilliseconds;
             _ocrFallback.Checked=_settings.reading.ocrFallback;
+            _autoRead.Checked=_settings.reading.autoReadEnabled;
             UpdateModeMenu();
         } finally { _loadingMode=false; }
         _rate.Value=_settings.speech.rate;
@@ -309,7 +321,8 @@ public sealed class MainForm : Form
         var state=Visible?"設定画面を表示中（カーソル自動読み上げは一時停止）":
             _busy?"範囲選択・漫画読み取りの処理中":
             _hoverBusy?"カーソル位置の文字認識中":
-            ReadingModes.IsAuto(_settings.reading.mode)?"カーソル自動読み上げの監視中":"自動読み上げ停止中";
+            _settings.reading.autoReadEnabled && ReadingModes.IsAuto(_settings.reading.mode)
+                ?"カーソル自動読み上げの監視中":"自動読み上げ停止中";
         _health.Text=$"状態: {state} / モード: {ReadingModes.Label(_settings.reading.mode)} / Ctrl+Alt+R: {(_hotkeyRRegistered?"登録済み":"登録できていません")}" +
             (DiagnosticLog.LastWriteError is string error?" / ログ書込失敗: "+error:"");
         if(++_heartbeatCounter%30==0)
@@ -352,11 +365,40 @@ public sealed class MainForm : Form
     {
         foreach(ToolStripMenuItem item in _modeMenu.DropDownItems)
             item.Checked=item.Text==ReadingModes.Label(_settings.reading.mode);
-        _tray.Text="読み上げ："+ReadingModes.Label(_settings.reading.mode);
+        _autoMenu.Checked=_settings.reading.autoReadEnabled;
+        _tray.Text=_settings.reading.autoReadEnabled && ReadingModes.IsAuto(_settings.reading.mode)
+            ?"読み上げ：自動ON":"読み上げ：自動OFF";
+    }
+
+    private void SetAutoReadEnabled(bool enabled)
+    {
+        if(_settings.reading.autoReadEnabled==enabled)
+        {
+            _cursorTimer.Enabled=enabled && ReadingModes.IsAuto(_settings.reading.mode);
+            return;
+        }
+        _settings.reading.autoReadEnabled=enabled;
+        _cursorGeneration++;
+        _hoverAttempted=false;
+        _lastAutoText="";
+        _lastPointer=new(-100000,-100000);
+        if(!enabled)_speech.Stop();
+        _cursorTimer.Enabled=enabled && ReadingModes.IsAuto(_settings.reading.mode);
+        if(_autoRead.Checked!=enabled)
+        {
+            _loadingMode=true;
+            try{_autoRead.Checked=enabled;} finally{_loadingMode=false;}
+        }
+        UpdateModeMenu();
+        try { _settings.Save(); }
+        catch(Exception ex){ DiagnosticLog.Error("自動読み上げ保存",ex); }
+        DiagnosticLog.Info("自動読み上げ",enabled?"ユーザーがカーソル読み上げを有効にしました。":"カーソル自動読み上げを停止しました。");
+        Status(enabled?"カーソル自動読み上げON":"カーソル自動読み上げOFF（範囲選択は利用可能）");
     }
     private void SetMode(string mode)
     {
         _settings.reading.mode=ReadingModes.Normalize(mode);
+        _cursorTimer.Enabled=_settings.reading.autoReadEnabled && ReadingModes.IsAuto(_settings.reading.mode);
         _cursorGeneration++;
         _hoverAttempted=false;
         _lastPointer=new(-100000,-100000);
@@ -372,7 +414,8 @@ public sealed class MainForm : Form
     }
     private void CursorTimerTick(object? sender,EventArgs e)
     {
-        if(!TrayReadingPolicy.CanAutomaticallyRead(Visible,_busy,_settings.reading.mode)) return;
+        if(!_settings.reading.autoReadEnabled ||
+           !TrayReadingPolicy.CanAutomaticallyRead(Visible,_busy,_settings.reading.mode)) return;
         var point=Cursor.Position;
         var now=Environment.TickCount64;
         if(Math.Abs(point.X-_lastPointer.X)>10 || Math.Abs(point.Y-_lastPointer.Y)>10) {
@@ -423,7 +466,8 @@ public sealed class MainForm : Form
             var current=Cursor.Position;
             if(IsDisposed || _busy || generation!=_cursorGeneration ||
                 Math.Abs(current.X-point.X)>10 || Math.Abs(current.Y-point.Y)>10 ||
-                mode!=_settings.reading.mode || !ReadingModes.IsAuto(mode) || Visible) {
+                mode!=_settings.reading.mode || !ReadingModes.IsAuto(mode) ||
+                !_settings.reading.autoReadEnabled || Visible) {
                 DiagnosticLog.Info("カーソル読み取り","カーソルが移動したため古い認識結果を破棄しました。");
                 return;
             }
