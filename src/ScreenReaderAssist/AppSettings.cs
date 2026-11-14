@@ -8,8 +8,30 @@ public sealed class AppSettings
     public OcrSettings ocr { get; set; } = new();
     public MagnifierSettings magnifier { get; set; } = new();
     public ReadingSettings reading { get; set; } = new();
-    // Portable first: this is located beside ScreenReaderAssist.exe, not in AppData.
-    public static string SettingsFile => Path.Combine(AppContext.BaseDirectory,"settings.ini");
+    // Portable extraction keeps settings.ini beside the EXE.
+    // An installation under Program Files uses a per-user writable directory.
+    public static string SettingsFile => ResolveSettingsFile(
+        AppContext.BaseDirectory,
+        Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+        Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
+
+    public static string ResolveSettingsFile(
+        string applicationDir, string programFiles, string programFilesX86, string localAppData)
+    {
+        static bool IsWithin(string directory, string root)
+        {
+            if(string.IsNullOrWhiteSpace(root))return false;
+            string basePath=Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar,Path.AltDirectorySeparatorChar)
+                + Path.DirectorySeparatorChar;
+            string appPath=Path.GetFullPath(directory).TrimEnd(Path.DirectorySeparatorChar,Path.AltDirectorySeparatorChar)
+                + Path.DirectorySeparatorChar;
+            return appPath.StartsWith(basePath,StringComparison.OrdinalIgnoreCase);
+        }
+        if(IsWithin(applicationDir,programFiles)||IsWithin(applicationDir,programFilesX86))
+            return Path.Combine(localAppData,"日本語拡大鏡","settings.ini");
+        return Path.Combine(applicationDir,"settings.ini");
+    }
     public static string LegacyJsonSettingsFile => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "ScreenReaderAssist","settings.json");
@@ -18,6 +40,12 @@ public sealed class AppSettings
     {
         if(File.Exists(SettingsFile))
             return PortableIni.Parse(File.ReadAllText(SettingsFile,System.Text.Encoding.UTF8));
+        // On first run from Program Files, import the bundled defaults. Subsequent
+        // saves go to the user's profile, never to the protected install folder.
+        string bundledIni=Path.Combine(AppContext.BaseDirectory,"settings.ini");
+        if(!String.Equals(SettingsFile,bundledIni,StringComparison.OrdinalIgnoreCase) &&
+           File.Exists(bundledIni))
+            return PortableIni.Parse(File.ReadAllText(bundledIni,System.Text.Encoding.UTF8));
         // Migration path for older previews. Never modify or delete the old JSON.
         if(File.Exists(LegacyJsonSettingsFile))
             return Normalize(JsonSerializer.Deserialize<AppSettings>(
@@ -26,6 +54,7 @@ public sealed class AppSettings
     }
     public void Save()
     {
+        Directory.CreateDirectory(Path.GetDirectoryName(SettingsFile)!);
         var tmp=SettingsFile+".tmp";
         // Same-folder portable configuration. Do not silently save to another path.
         File.WriteAllText(tmp,PortableIni.Write(Normalize(this)),new System.Text.UTF8Encoding(false));
