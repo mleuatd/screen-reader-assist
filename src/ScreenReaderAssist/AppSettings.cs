@@ -71,7 +71,7 @@ public sealed class AppSettings
         // v0.2: retire the global click hook to avoid interfering with other applications.
         config.magnifier.enableTripleClick = false;
         config.reading.mode = ReadingModes.Normalize(config.reading.mode);
-        config.reading.dwellMilliseconds=Math.Clamp(config.reading.dwellMilliseconds,400,2000);
+        config.reading.dwellMilliseconds=Math.Clamp(config.reading.dwellMilliseconds,200,2000);
         return config;
     }
 }
@@ -101,6 +101,6 @@ public sealed class ReadingSettings
     // hover speech unless the user explicitly opts in via this separate flag.
     public bool autoReadEnabled { get; set; } = false;
     public string mode { get; set; } = ReadingModes.Selection;
-    public int dwellMilliseconds { get; set; } = 750;
+    public int dwellMilliseconds { get; set; } = 300;
     public bool ocrFallback { get; set; } = true;
 }
