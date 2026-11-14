@@ -77,6 +77,10 @@ public sealed class SpeechService : IDisposable
                 _selectedVoice=_engine.CurrentVoice;
             }
         }
+        // The real Windows SAPI engine reads the magnifier's latest rate
+        // before every utterance. Fake engines used by unit tests stay isolated.
+        if(_engine is WindowsSpeechEngine && SharedSpeechRate.TryRead(out var sharedRate))
+            settings.rate=sharedRate;
         int rate=Math.Clamp(settings.rate,-10,10);
         int volume=Math.Clamp(settings.volume,0,100);
         if(_appliedRate!=rate) { _engine.Rate=rate;_appliedRate=rate; }
