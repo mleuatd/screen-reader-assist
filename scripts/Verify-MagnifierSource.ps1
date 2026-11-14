@@ -41,6 +41,23 @@ foreach($case in @(
         throw "Incorrect horizontal gesture at $($case.pixels) px: $actual (expected $($case.expected))"
     }
 }
+$second=$gesture.GetMethod('IsSecondClick',[System.Reflection.BindingFlags]'Static,NonPublic')
+if(-not $second){throw 'Double-click accessibility tolerance test function is missing'}
+$systemSize=[System.Drawing.Size]::new(4,4)
+foreach($case in @(
+    @{ms=420;dx=18;dy=-15;result=$true},
+    @{ms=420;dx=19;dy=0;result=$false},
+    @{ms=501;dx=0;dy=0;result=$false},
+    @{ms=0;dx=0;dy=0;result=$true},
+    @{ms=-1;dx=0;dy=0;result=$false}
+)) {
+    $got=[bool]$second.Invoke($null,@(
+        [int]$case.ms,[int]$case.dx,[int]$case.dy,500,$systemSize))
+    if($got -ne $case.result){
+        throw ("Unexpected double-click behavior: time=$($case.ms), dx=$($case.dx), dy=$($case.dy)")
+    }
+}
+Write-Host 'PASS: Japanese magnifier double-click accepts 18px hand drift but rejects late/unrelated clicks.'
 $viewer=[AppDomain]::CurrentDomain.GetAssemblies() |
     ForEach-Object { $_.GetType('Win11Magnifier.DedicatedViewer',$false) } |
     Where-Object { $null -ne $_ } | Select-Object -First 1
