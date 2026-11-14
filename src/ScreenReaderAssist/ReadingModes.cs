@@ -5,7 +5,7 @@ public static class ReadingModes
     public static string Normalize(string? mode) => mode switch
     {
         Cursor or Manga or Selection or Off => mode,
-        _ => Cursor
+        _ => Selection
     };
     public static bool IsAuto(string? mode) => mode is Cursor or Manga;
     public static string Label(string? mode)=>mode switch
