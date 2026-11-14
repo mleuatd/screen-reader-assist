@@ -15,7 +15,7 @@ using Microsoft.Win32;
 namespace Win11Magnifier
 {
     // Same location and file format as ScreenReaderAssist.SharedSpeechRate.
-    // Communication is local-file I/O only; never a socket or cloud request.
+    // Data is shared through a user-local file only; no network communication.
     internal static class SharedVoiceRate
     {
         internal static string PathName
