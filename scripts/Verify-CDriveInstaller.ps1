@@ -1,34 +1,60 @@
 ﻿#Requires -Version 5.1
 $ErrorActionPreference='Stop'
 $root=Split-Path -Parent $PSScriptRoot
-$ps1=Join-Path $root 'installer/Install-Magnifier-CDrive.ps1'
-$bat=Join-Path $root 'installer/日本語拡大鏡_インストール.bat'
-$source=Get-Content -LiteralPath $ps1 -Raw -Encoding UTF8
-$launcher=Get-Content -LiteralPath $bat -Raw -Encoding UTF8
-$tokens=$null
-$parseErrors=$null
-$null=[System.Management.Automation.Language.Parser]::ParseFile($ps1,[ref]$tokens,[ref]$parseErrors)
-if($parseErrors.Count -gt 0) {
-    foreach($parseError in $parseErrors){Write-Error $parseError.Message}
-    throw 'Installer PowerShell parse failed'
-}
-$checks=@(
-    @{label='x64 Program Files';pattern='GetFolderPath\(\x27ProgramFiles\x27\)'},
-    @{label='Japanese installed folder';pattern='\$installName\s*=\s*\x27日本語拡大鏡\x27'},
-    @{label='existing install rollback';pattern='\$oldRenamed\s*=\s*\$true'},
-    @{label='UAC promotion';pattern='-Verb\s+RunAs'},
-    @{label='single official GitHub download';pattern='https://github\.com/mleuatd/screen-reader-assist/releases/download/'},
-    @{label='Japanese app launched by BAT';pattern='拡大鏡実行\.bat'},
-    @{label='offline model verification';pattern='ppocrv6_rec\.onnx'}
-)
-foreach($check in $checks){
-    if(-not [regex]::IsMatch($source,$check.pattern,[Text.RegularExpressions.RegexOptions]::IgnoreCase)){
-        throw ('Installer missing check: '+$check.label)
+$installer=Join-Path $root 'installer/Install-Magnifier-CDrive.ps1'
+$updater=Join-Path $root 'installer/Update-Magnifier.ps1'
+$installerBat=Join-Path $root 'installer/日本語拡大鏡_インストール.bat'
+$updaterBat=Join-Path $root 'installer/最新版に更新.bat'
+foreach($file in @($installer,$updater,$installerBat,$updaterBat)) {
+    if(-not(Test-Path -LiteralPath $file -PathType Leaf)) {
+        throw ('Installer/updater component is missing: '+$file)
     }
 }
-if($source.Contains('D:\') -or $launcher.Contains('D:\')){throw 'The installer must not use drive D'}
-if(-not $launcher.Contains('-File "%~dp0Install-Magnifier-CDrive.ps1"')){
-    throw 'Installer BAT cannot invoke the PowerShell companion script'
+foreach($file in @($installer,$updater)) {
+    $tokens=$null
+    $errorsFound=$null
+    $null=[System.Management.Automation.Language.Parser]::ParseFile(
+        $file,[ref]$tokens,[ref]$errorsFound)
+    if($errorsFound.Count -gt 0) {
+        foreach($item in $errorsFound){Write-Error $item.Message}
+        throw ('PowerShell script failed to parse: '+$file)
+    }
 }
-Write-Host 'PASS: C-drive 64-bit Japanese installer script parses, requires admin and validates offline models'
-Write-Host 'Runtime download and actual UAC/Program Files write need a Windows 11 user trial'
+$installSource=Get-Content -LiteralPath $installer -Raw -Encoding UTF8
+$updateSource=Get-Content -LiteralPath $updater -Raw -Encoding UTF8
+$source=$installSource+[Environment]::NewLine+$updateSource
+$launcher=Get-Content -LiteralPath $installerBat -Raw -Encoding UTF8
+$updateLauncher=Get-Content -LiteralPath $updaterBat -Raw -Encoding UTF8
+
+$checks=@(
+    @{label='64-bit Program Files';pattern='GetFolderPath\(''ProgramFiles''\)'},
+    @{label='Japanese installed folder';pattern='\$installName\s*=\s*''日本語拡大鏡'''},
+    @{label='backup and recovery';pattern='\$oldRenamed\s*=\s*\$true'},
+    @{label='manual administrator elevation';pattern='-Verb\s+RunAs'},
+    @{label='verified rolling GitHub release';pattern='tryout-latest'},
+    @{label='SHA256 validation before replacement';pattern='Get-FileHash'},
+    @{label='zip version match';pattern='\$bundledVersion\s+-ne\s+\$newVersion'},
+    @{label='refuse update while reader is running';pattern='Assert-ProgramsClosed'},
+    @{label='offline model integrity';pattern='ppocrv6_rec\.onnx'},
+    @{label='permanent user shortcut';pattern='日本語拡大鏡を更新\.lnk'}
+)
+foreach($check in $checks) {
+    if(-not [regex]::IsMatch($source,$check.pattern,[Text.RegularExpressions.RegexOptions]::IgnoreCase)) {
+        throw ('Installer/update policy check failed: '+$check.label)
+    }
+}
+if($source.Contains('D:\') -or $launcher.Contains('D:\') -or $updateLauncher.Contains('D:\')) {
+    throw 'Updater cannot use drive D'
+}
+if(-not $launcher.Contains('-File "%~dp0Install-Magnifier-CDrive.ps1"')) {
+    throw 'Installer BAT cannot invoke its companion script'
+}
+if(-not $updateLauncher.Contains('-File "%~dp0Update-Magnifier.ps1"')) {
+    throw 'Updater BAT cannot invoke its companion script'
+}
+if(-not $installSource.Contains("Update-Magnifier.ps1")) {
+    throw 'Initial installer must reuse the verified manual updater'
+}
+Write-Host 'PASS: Japanese installer and manual updater parse under Windows PowerShell 5.1.'
+Write-Host 'PASS: C-drive install, SHA256 verification, old-version rollback and shortcuts are present.'
+Write-Host 'Note: Actual UAC, running-process detection and file replacement need a Windows 11 manual trial.'
