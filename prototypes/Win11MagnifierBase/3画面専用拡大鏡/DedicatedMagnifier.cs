@@ -14,6 +14,53 @@ using Microsoft.Win32;
 
 namespace Win11Magnifier
 {
+    // Same location and file format as ScreenReaderAssist.SharedSpeechRate.
+    // Communication is local-file I/O only; never a socket or cloud request.
+    internal static class SharedVoiceRate
+    {
+        internal static string PathName
+        {
+            get {
+                return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "ScreenReaderAssist", "voice-rate.shared");
+            }
+        }
+        internal static bool TryRead(out int rate)
+        {
+            rate=0;
+            try
+            {
+                int value;
+                if(!int.TryParse(File.ReadAllText(PathName,Encoding.ASCII).Trim(),
+                    NumberStyles.AllowLeadingSign,CultureInfo.InvariantCulture,out value)
+                   || value < -10 || value > 10)return false;
+                rate=value;
+                return true;
+            }
+            catch(IOException) {return false;}
+            catch(UnauthorizedAccessException) {return false;}
+        }
+        internal static bool Publish(int value)
+        {
+            string destination=PathName;
+            string temp=null;
+            try
+            {
+                string folder=Path.GetDirectoryName(destination);
+                if(!Directory.Exists(folder))Directory.CreateDirectory(folder);
+                temp=destination+"."+Guid.NewGuid().ToString("N")+".tmp";
+                File.WriteAllText(temp,Math.Max(-10,Math.Min(10,value)).ToString(CultureInfo.InvariantCulture),Encoding.ASCII);
+                if(File.Exists(destination))
+                    File.Replace(temp,destination,null);
+                else File.Move(temp,destination);
+                return true;
+            }
+            catch(IOException) {return false;}
+            catch(UnauthorizedAccessException) {return false;}
+            finally {if(temp!=null){try{File.Delete(temp);}catch(IOException){}}}
+        }
+    }
+
     internal static class WinMagApi
     {
         internal const int WS_EX_LAYERED = 0x00080000;
@@ -339,6 +386,7 @@ namespace Win11Magnifier
         private readonly Label zoomLabel;
         private readonly Label stateLabel;
         private readonly Timer followTimer;
+        private readonly Timer voiceSyncTimer;
 
         private IntPtr magHandle = IntPtr.Zero;
         private PreviewDragInput previewInput;
@@ -385,6 +433,9 @@ namespace Win11Magnifier
             string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             settingsPath = Path.Combine(appData, "Win11MagnifierBase", "third-monitor-settings.txt");
             LoadSettings();
+            int syncedRate;
+            if(SharedVoiceRate.TryRead(out syncedRate))voiceRate=syncedRate;
+            else SharedVoiceRate.Publish(voiceRate);
 
             Text = "3画面専用拡大鏡 v0.5 — 1回ドラッグ：拡大／2回目ドラッグ：読み上げ速度";
             Font = new Font("Yu Gothic UI", 12f);
@@ -591,6 +642,13 @@ namespace Win11Magnifier
             followTimer = new Timer();
             followTimer.Interval = 40; // 25 checks/sec, only update source on change.
             followTimer.Tick += delegate { TickFollow(); };
+            voiceSyncTimer = new Timer();
+            voiceSyncTimer.Interval = 350;
+            voiceSyncTimer.Tick += delegate {
+                int incoming;
+                if(SharedVoiceRate.TryRead(out incoming) && incoming != voiceRate)
+                    SetVoiceRate(incoming,false);
+            };
 
             Shown += delegate { StartViewer(); };
             FormClosing += delegate { ShutdownViewer(); };
@@ -642,6 +700,7 @@ namespace Win11Magnifier
                 ResizeMagnifier();
                 TickFollow();
                 followTimer.Start();
+                voiceSyncTimer.Start();
                 // The optional global listener is independent of focus. A failure
                 // to install it must never stop the magnifier or speech test UI.
                 try
@@ -751,7 +810,10 @@ namespace Win11Magnifier
 
         internal bool ApplyPreviewDragZoom(float next) { return SetZoom(next, false); }
         internal bool ApplyPreviewDragVoiceRate(int next) { return SetVoiceRate(next, false); }
-        internal void CommitPreviewDragGesture() { SaveSettings(); }
+        internal void CommitPreviewDragGesture() {
+            SaveSettings();
+            SharedVoiceRate.Publish(voiceRate);
+        }
 
         internal void ReportOcrStatus(string message)
         {
@@ -807,7 +869,11 @@ namespace Win11Magnifier
                 try { speechSynth.Rate = voiceRate; }
                 catch (Exception e) { voiceStatusLabel.Text = "速度の適用に失敗: " + e.Message; }
             }
-            if (persist) SaveSettings();
+            if (persist)
+            {
+                SaveSettings();
+                SharedVoiceRate.Publish(voiceRate);
+            }
             return true;
         }
 
@@ -1096,6 +1162,8 @@ namespace Win11Magnifier
             SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
             followTimer.Stop();
             followTimer.Dispose();
+            voiceSyncTimer.Stop();
+            voiceSyncTimer.Dispose();
             if (speechSynth != null)
             {
                 try { speechSynth.SpeakAsyncCancelAll(); } catch { }
