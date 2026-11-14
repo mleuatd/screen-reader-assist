@@ -49,8 +49,10 @@ if($source.Contains('D:\') -or $launcher.Contains('D:\') -or $updateLauncher.Con
 if(-not $launcher.Contains('-File "%~dp0Install-Magnifier-CDrive.ps1"')) {
     throw 'Installer BAT cannot invoke its companion script'
 }
-if(-not $updateLauncher.Contains('-File "%~dp0Update-Magnifier.ps1"')) {
-    throw 'Updater BAT cannot invoke its companion script'
+if(-not $updateLauncher.Contains('copy /y "%~dp0Update-Magnifier.ps1"') -or
+   -not $updateLauncher.Contains('-File "%TASK%\Update-Magnifier.ps1"') -or
+   -not $updateLauncher.Contains('cd /d "%TEMP%"')) {
+    throw 'Updater BAT must run from a detached temporary copy to avoid locking Program Files'
 }
 if(-not $installSource.Contains("Update-Magnifier.ps1")) {
     throw 'Initial installer must reuse the verified manual updater'
