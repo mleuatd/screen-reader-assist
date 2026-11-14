@@ -184,6 +184,82 @@ namespace Win11Magnifier
         public override string ToString() { return Label; }
     }
 
+    // Non-activating, mouse-click-through visual indicator shown over the
+    // magnified content. It never changes the Windows desktop zoom.
+    internal sealed class GestureHud : Form
+    {
+        private string title = "";
+        private string details = "";
+        private double ratio;
+        private readonly DedicatedViewer viewer;
+
+        internal GestureHud(DedicatedViewer owner)
+        {
+            viewer = owner;
+            FormBorderStyle = FormBorderStyle.None;
+            ShowInTaskbar = false;
+            StartPosition = FormStartPosition.Manual;
+            BackColor = Color.FromArgb(12, 21, 38);
+            ForeColor = Color.White;
+            Opacity = 0.95;
+            Width = 550;
+            Height = 162;
+            DoubleBuffered = true;
+            AccessibleName = "拡大倍率または読み上げ速度を確認する中央表示";
+        }
+
+        protected override bool ShowWithoutActivation { get { return true; } }
+
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                CreateParams cp = base.CreateParams;
+                // No activation, click-through and no entry in Alt+Tab.
+                cp.ExStyle |= 0x08000000 | 0x00000020 | 0x00000080;
+                return cp;
+            }
+        }
+
+        internal void Display(string caption, string value, double fraction, Rectangle screenArea)
+        {
+            title = caption;
+            details = value;
+            ratio = Math.Max(0, Math.Min(1, fraction));
+            int w = Math.Min(550, Math.Max(280, screenArea.Width - 32));
+            int h = Math.Min(162, Math.Max(120, screenArea.Height - 20));
+            Bounds = new Rectangle(
+                screenArea.Left + (screenArea.Width - w) / 2,
+                screenArea.Top + (screenArea.Height - h) / 2, w, h);
+            if (!Visible) Show(viewer);
+            Invalidate();
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            Graphics g = e.Graphics;
+            g.Clear(Color.FromArgb(12, 21, 38));
+            using (Pen edge = new Pen(Color.FromArgb(119, 241, 164), 3))
+                g.DrawRectangle(edge, 2, 2, Width - 5, Height - 5);
+            TextRenderer.DrawText(g, title, new Font("Yu Gothic UI", 15f, FontStyle.Bold),
+                new Rectangle(18, 12, Width - 36, 36), Color.White,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            TextRenderer.DrawText(g, details, new Font("Yu Gothic UI", 18f, FontStyle.Bold),
+                new Rectangle(18, 52, Width - 36, 38), Color.FromArgb(180, 255, 192),
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+
+            int left = 32, barWidth = Math.Max(80, Width - 64), top = Height - 39;
+            using (Brush bg = new SolidBrush(Color.FromArgb(66, 85, 106)))
+                g.FillRectangle(bg, left, top, barWidth, 15);
+            using (Brush active = new SolidBrush(Color.FromArgb(80, 232, 143)))
+                g.FillRectangle(active, left, top, Math.Max(1, (int)(ratio * barWidth)), 15);
+            int knob = left + (int)(ratio * barWidth);
+            using (Brush indicator = new SolidBrush(Color.White))
+                g.FillEllipse(indicator, knob - 10, top - 5, 20, 25);
+        }
+    }
+
     // Native Magnifier child window input. Neither source monitor receives mouse input
     // nor does this app use system-wide mouse hooks or synthetic clicks.
     // Click+drag => zoom. Click, release, second click+drag => speech rate.
@@ -275,6 +351,8 @@ namespace Win11Magnifier
                         startVoiceRate = viewer.DragStartVoiceRate;
                         dragging = true; // Track small first clicks, too.
                         WinMagApi.SetCapture(Handle);
+                        if (currentGesture == Gesture.VoiceRate)
+                            viewer.BeginGestureVoicePreview();
                     }
                     m.Result = IntPtr.Zero;
                     return;
@@ -351,6 +429,7 @@ namespace Win11Magnifier
                 firstClickPoint = pressPoint;
                 firstClickPressedTicks = pressTicks;
             }
+            viewer.EndGesturePreview(finished == Gesture.VoiceRate);
             if (save)
                 viewer.CommitPreviewDragGesture();
         }
@@ -387,6 +466,11 @@ namespace Win11Magnifier
         private readonly Label stateLabel;
         private readonly Timer followTimer;
         private readonly Timer voiceSyncTimer;
+        private readonly Timer voicePreviewTimer;
+        private readonly Timer hudHideTimer;
+        private readonly GestureHud gestureHud;
+        private bool voicePreviewActive;
+        private const string VoicePreviewPhrase = "テスト再生";
 
         private IntPtr magHandle = IntPtr.Zero;
         private PreviewDragInput previewInput;
@@ -636,6 +720,17 @@ namespace Win11Magnifier
             Controls.Add(speechInputBar);
             Controls.Add(bar);
 
+            gestureHud = new GestureHud(this);
+            voicePreviewTimer = new Timer();
+            voicePreviewTimer.Interval = 200;
+            voicePreviewTimer.Tick += delegate { ContinueVoicePreview(); };
+            hudHideTimer = new Timer();
+            hudHideTimer.Interval = 650;
+            hudHideTimer.Tick += delegate {
+                hudHideTimer.Stop();
+                if (!gestureHud.IsDisposed) gestureHud.Hide();
+            };
+
             zoomLabel.Text = zoom.ToString("0.00", CultureInfo.InvariantCulture) + "倍";
             UpdateVoiceRateLabel();
 
@@ -808,8 +903,91 @@ namespace Win11Magnifier
         internal bool DragZoomEnabled { get { return dragZoomEnabled; } }
         internal bool DragVoiceEnabled { get { return dragVoiceEnabled; } }
 
-        internal bool ApplyPreviewDragZoom(float next) { return SetZoom(next, false); }
-        internal bool ApplyPreviewDragVoiceRate(int next) { return SetVoiceRate(next, false); }
+        internal bool ApplyPreviewDragZoom(float next)
+        {
+            bool updated = SetZoom(next, false);
+            if (updated) ShowGestureHud(false);
+            return updated;
+        }
+        internal bool ApplyPreviewDragVoiceRate(int next)
+        {
+            bool updated = SetVoiceRate(next, false);
+            if (updated)
+            {
+                ShowGestureHud(true);
+                StartVoicePreviewSample();
+            }
+            return updated;
+        }
+
+        private void ShowGestureHud(bool voice)
+        {
+            if (closing || IsDisposed) return;
+            hudHideTimer.Stop();
+            Rectangle screen = viewSpace.RectangleToScreen(viewSpace.ClientRectangle);
+            if (voice)
+                gestureHud.Display("読み上げ速度", "速度 " + (voiceRate >= 0 ? "+" : "") +
+                    voiceRate.ToString(CultureInfo.InvariantCulture) + "　（調整中：テスト再生）",
+                    (voiceRate + 10.0) / 20.0, screen);
+            else
+                gestureHud.Display("拡大倍率", zoom.ToString("0.00", CultureInfo.InvariantCulture) + "倍",
+                    (zoom - 1.0) / 15.0, screen);
+        }
+
+        internal void BeginGestureVoicePreview()
+        {
+            if (closing || IsDisposed) return;
+            voicePreviewActive = true;
+            ShowGestureHud(true);
+            StartVoicePreviewSample();
+            voicePreviewTimer.Start();
+        }
+
+        private void StartVoicePreviewSample()
+        {
+            if (!voicePreviewActive || speechSynth == null) return;
+            try
+            {
+                speechSynth.SpeakAsyncCancelAll();
+                speechSynth.Rate = voiceRate;
+                speechSynth.SpeakAsync(VoicePreviewPhrase);
+            }
+            catch (InvalidOperationException) { voicePreviewTimer.Stop(); }
+        }
+
+        private void ContinueVoicePreview()
+        {
+            if (!voicePreviewActive || speechSynth == null || closing)
+            {
+                voicePreviewTimer.Stop();
+                return;
+            }
+            try
+            {
+                if (speechSynth.State == SynthesizerState.Ready)
+                    StartVoicePreviewSample();
+            }
+            catch (InvalidOperationException) { voicePreviewTimer.Stop(); }
+        }
+
+        internal void EndGesturePreview(bool wasVoice)
+        {
+            if (wasVoice || voicePreviewActive)
+            {
+                voicePreviewActive = false;
+                voicePreviewTimer.Stop();
+                if (speechSynth != null)
+                {
+                    try { speechSynth.SpeakAsyncCancelAll(); }
+                    catch (InvalidOperationException) { }
+                }
+            }
+            if (!closing && !IsDisposed)
+            {
+                hudHideTimer.Stop();
+                hudHideTimer.Start();
+            }
+        }
         internal void CommitPreviewDragGesture() {
             SaveSettings();
             SharedVoiceRate.Publish(voiceRate);
@@ -1164,6 +1342,13 @@ namespace Win11Magnifier
             followTimer.Dispose();
             voiceSyncTimer.Stop();
             voiceSyncTimer.Dispose();
+            voicePreviewActive = false;
+            voicePreviewTimer.Stop();
+            voicePreviewTimer.Dispose();
+            hudHideTimer.Stop();
+            hudHideTimer.Dispose();
+            gestureHud.Close();
+            gestureHud.Dispose();
             if (speechSynth != null)
             {
                 try { speechSynth.SpeakAsyncCancelAll(); } catch { }
