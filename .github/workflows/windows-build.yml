@@ -84,6 +84,11 @@ jobs:
         run: |
           & "$env:WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File .\scripts\Verify-MagnifierSource.ps1
           if ($LASTEXITCODE -ne 0) { throw 'Three-monitor magnifier build failed' }
+      - name: Package commit version identifier for manual updates
+        shell: pwsh
+        run: |
+          Set-Content -LiteralPath publish/version.txt -Value $env:GITHUB_SHA -NoNewline -Encoding ASCII
+          if (-not (Test-Path 'publish/version.txt')) { throw 'Build version missing' }
       - name: 一式を同梱し拡大鏡実行.batを生成
         shell: pwsh
         run: ./scripts/Prepare-OneClickMagnifierZip.ps1 -PublishDirectory publish
@@ -145,3 +150,47 @@ jobs:
         run: |
           set -euo pipefail
           gh release create tryout-20261115-hud preview/ScreenReaderAssist-win-x64.zip JapaneseMagnifier-CDrive-Installer.zip --target "$GITHUB_SHA" --prerelease --title "Windows 11 Japanese Magnifier - C drive HUD test build" --notes "Windows 11 x64: download the small installer ZIP, extract and run 日本語拡大鏡_インストール.bat. It installs under C:\\Program Files\\日本語拡大鏡, creates a desktop shortcut, and preserves old versions for rollback. Runtime magnification, Japanese OCR and voice are offline. The central zoom/rate display and spoken sample during second-click drag are experimental and require manual three-monitor testing."
+
+  publish-rolling:
+    # Only the fully tested Windows ZIP from main is made available to users.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: screen-reader-assist-manual-rolling-release
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: ScreenReaderAssist-win-x64
+          path: preview
+      - name: Create matching hash, version and small installer/updater ZIPs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s preview/ScreenReaderAssist-win-x64.zip
+          sha256sum preview/ScreenReaderAssist-win-x64.zip | sed 's@preview/@@' > CHECKSUMS.sha256
+          printf '%s' "$GITHUB_SHA" > latest-version.txt
+          zip -j -q JapaneseMagnifier-Updater.zip "installer/最新版に更新.bat" installer/Update-Magnifier.ps1
+          zip -j -q JapaneseMagnifier-CDrive-Installer.zip "installer/日本語拡大鏡_インストール.bat" installer/Install-Magnifier-CDrive.ps1 installer/Update-Magnifier.ps1
+          test -s CHECKSUMS.sha256
+          test -s latest-version.txt
+          test -s JapaneseMagnifier-Updater.zip
+          test -s JapaneseMagnifier-CDrive-Installer.zip
+      - name: Publish latest verified build for user-initiated updates
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          assets=(preview/ScreenReaderAssist-win-x64.zip CHECKSUMS.sha256 latest-version.txt JapaneseMagnifier-CDrive-Installer.zip JapaneseMagnifier-Updater.zip)
+          if gh release view tryout-latest >/dev/null 2>&1; then
+            gh release upload tryout-latest "${assets[@]}" --clobber
+            gh release edit tryout-latest --title "Windows 11 Japanese Magnifier - latest tested build" --notes "Manual update build from main: $GITHUB_SHA. Only the separate user-initiated updater downloads. Runtime magnifier, OCR and speech are offline. Extract the small updater ZIP once and run 最新版に更新.bat. The new installation creates a permanent 日本語拡大鏡を更新 desktop shortcut."
+          else
+            gh release create tryout-latest "${assets[@]}" --target "$GITHUB_SHA" --prerelease --title "Windows 11 Japanese Magnifier - latest tested build" --notes "Manual update build from main: $GITHUB_SHA. Download the small updater ZIP and run 最新版に更新.bat once. The program itself remains offline."
+          fi

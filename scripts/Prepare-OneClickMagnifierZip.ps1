@@ -118,6 +118,19 @@ foreach($debugName in @('libSkiaSharp.pdb','ScreenReaderAssist.pdb',
     }
 }
 
+# The updater is separate from the app: it connects to GitHub only after the
+# user explicitly runs the Japanese-named update BAT.
+foreach($name in @('Update-Magnifier.ps1','最新版に更新.bat')) {
+    $from=Join-Path (Join-Path $root 'installer') $name
+    if(-not (Test-Path -LiteralPath $from -PathType Leaf)) {
+        throw ('Missing standalone updater: '+$name)
+    }
+    Copy-Item -LiteralPath $from -Destination (Join-Path $publish $name) -Force
+}
+if(-not(Test-Path -LiteralPath (Join-Path $publish 'version.txt'))) {
+    throw 'The GitHub build commit identifier is missing.'
+}
+
 $bat=Join-Path $publish '拡大鏡実行.bat'
 if(-not(Test-Path -LiteralPath $bat)){throw 'One-click launcher was not created'}
 if(-not(Test-Path -LiteralPath (Join-Path $magnifier 'GlobalOcrSelection.cs'))){throw 'Magnifier C# source missing'}
