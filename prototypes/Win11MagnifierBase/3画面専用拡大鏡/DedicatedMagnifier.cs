@@ -242,12 +242,14 @@ namespace Win11Magnifier
             g.Clear(Color.FromArgb(12, 21, 38));
             using (Pen edge = new Pen(Color.FromArgb(119, 241, 164), 3))
                 g.DrawRectangle(edge, 2, 2, Width - 5, Height - 5);
-            TextRenderer.DrawText(g, title, new Font("Yu Gothic UI", 15f, FontStyle.Bold),
-                new Rectangle(18, 12, Width - 36, 36), Color.White,
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-            TextRenderer.DrawText(g, details, new Font("Yu Gothic UI", 18f, FontStyle.Bold),
-                new Rectangle(18, 52, Width - 36, 38), Color.FromArgb(180, 255, 192),
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            using (Font headingFont = new Font("Yu Gothic UI", 15f, FontStyle.Bold))
+                TextRenderer.DrawText(g, title, headingFont,
+                    new Rectangle(18, 12, Width - 36, 36), Color.White,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            using (Font numberFont = new Font("Yu Gothic UI", 18f, FontStyle.Bold))
+                TextRenderer.DrawText(g, details, numberFont,
+                    new Rectangle(18, 52, Width - 36, 38), Color.FromArgb(180, 255, 192),
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
 
             int left = 32, barWidth = Math.Max(80, Width - 64), top = Height - 39;
             using (Brush bg = new SolidBrush(Color.FromArgb(66, 85, 106)))
@@ -952,7 +954,7 @@ namespace Win11Magnifier
                 speechSynth.Rate = voiceRate;
                 speechSynth.SpeakAsync(VoicePreviewPhrase);
             }
-            catch (InvalidOperationException) { voicePreviewTimer.Stop(); }
+            catch (InvalidOperationException) { /* Retry on next timer tick. */ }
         }
 
         private void ContinueVoicePreview()
