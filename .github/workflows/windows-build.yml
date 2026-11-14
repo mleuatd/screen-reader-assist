@@ -76,6 +76,14 @@ jobs:
           if (-not (Test-Path 'publish/ScreenReaderAssist.exe')) { throw 'Missing portable EXE' }
           if (-not (Test-Path 'publish/settings.ini')) { throw 'Missing portable INI' }
           if (-not (Test-Path 'publish/ResetScreen.cmd')) { throw 'Missing emergency display repair' }
+      - name: Windows PowerShell 5.1 で3画面拡大鏡のC#ソースをコンパイル検証
+        shell: pwsh
+        run: |
+          & "$env:WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File .\scripts\Verify-MagnifierSource.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'Three-monitor magnifier build failed' }
+      - name: 一式を同梱し拡大鏡実行.batを生成
+        shell: pwsh
+        run: ./scripts/Prepare-OneClickMagnifierZip.ps1 -PublishDirectory publish
       - name: ZIP app
         shell: pwsh
         run: Compress-Archive -Path publish\* -DestinationPath ScreenReaderAssist-win-x64.zip
