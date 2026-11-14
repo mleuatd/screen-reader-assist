@@ -92,3 +92,25 @@ jobs:
           name: ScreenReaderAssist-win-x64
           path: ScreenReaderAssist-win-x64.zip
           if-no-files-found: error
+  publish-oneclick-preview:
+    # One-time direct-download preview of the user-requested integrated package.
+    # Using a non-v* tag prevents conflict with the normal release.yml workflow.
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, 'Synchronize magnifier TTS rate') }}
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ScreenReaderAssist-win-x64
+          path: preview
+      - name: Create public pre-release download independent of ChatGPT attachments
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          test -s preview/ScreenReaderAssist-win-x64.zip
+          gh release create tryout-20261115 preview/ScreenReaderAssist-win-x64.zip --target "$GITHUB_SHA" --prerelease --title "Windows 11 magnifier + offline Japanese OCR (test build)" --notes "Extract ZIP and double-click 拡大鏡実行.bat. Rate gestures are synchronized across the two bundled processes. This is a test build; Windows 11 three-monitor GUI operation is not yet manually certified."
