@@ -5,6 +5,7 @@
 // the magnifier UI remains responsive and Windows OCR failures stay isolated.
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
@@ -330,6 +331,8 @@ namespace Win11Magnifier
 
         private static string RunLocalOcr(Rectangle clip)
         {
+            Stopwatch timing=Stopwatch.StartNew();
+            long screenshotMs=0, pngMs=0, workerMs=0;
             string dir = Path.Combine(Path.GetTempPath(), "Win11MagnifierOcr");
             Directory.CreateDirectory(dir);
             string id = Guid.NewGuid().ToString("N");
@@ -343,7 +346,9 @@ namespace Win11Magnifier
                 {
                     using (Graphics graphics = Graphics.FromImage(bmp))
                         graphics.CopyFromScreen(clip.Left, clip.Top, 0, 0, bmp.Size, CopyPixelOperation.SourceCopy);
+                    screenshotMs=timing.ElapsedMilliseconds;
                     bmp.Save(imageFile, System.Drawing.Imaging.ImageFormat.Png);
+                    pngMs=timing.ElapsedMilliseconds-screenshotMs;
                 }
                 // AppDomain.BaseDirectory for PowerShell normally points to its
                 // system directory, NOT the bundled magnifier directory.
@@ -367,6 +372,7 @@ namespace Win11Magnifier
                 start.UseShellExecute = false;
                 start.CreateNoWindow = true;
                 start.WindowStyle = ProcessWindowStyle.Hidden;
+                long workerStart=timing.ElapsedMilliseconds;
                 using (Process p = Process.Start(start))
                 {
                     if (!p.WaitForExit(18000))
@@ -380,14 +386,39 @@ namespace Win11Magnifier
                         throw new InvalidOperationException(message.Trim());
                     }
                 }
+                workerMs=timing.ElapsedMilliseconds-workerStart;
                 return File.Exists(resultFile) ? File.ReadAllText(resultFile, Encoding.UTF8) : "";
             }
             finally
             {
+                RecordOcrPerformance(screenshotMs,pngMs,workerMs,timing.ElapsedMilliseconds);
                 try { if (File.Exists(imageFile)) File.Delete(imageFile); } catch { }
                 try { if (File.Exists(resultFile)) File.Delete(resultFile); } catch { }
                 try { if (File.Exists(errorFile)) File.Delete(errorFile); } catch { }
             }
+        }
+
+        private static void RecordOcrPerformance(long capture,long encode,long worker,long total)
+        {
+            // Deliberately log timings only. Do not save screen contents,
+            // recognized text, cursor coordinates, or image paths.
+            try
+            {
+                string directory=Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "日本語拡大鏡");
+                Directory.CreateDirectory(directory);
+                string report=Path.Combine(directory,"ocr-performance.log");
+                string line=DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss",CultureInfo.InvariantCulture) +
+                    " 日本語OCR: capture=" + capture.ToString(CultureInfo.InvariantCulture) +
+                    "ms png=" + encode.ToString(CultureInfo.InvariantCulture) +
+                    "ms powershell+recognition=" + worker.ToString(CultureInfo.InvariantCulture) +
+                    "ms total=" + total.ToString(CultureInfo.InvariantCulture) + "ms" +
+                    Environment.NewLine;
+                File.AppendAllText(report,line,Encoding.UTF8);
+            }
+            catch(IOException) { }
+            catch(UnauthorizedAccessException) { }
         }
 
         private static string Quote(string value) { return "\"" + value.Replace("\"", "\\\"") + "\""; }
