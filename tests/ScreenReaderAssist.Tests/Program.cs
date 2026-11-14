@@ -102,9 +102,18 @@ Check(!AppSettings.Normalize(new AppSettings {magnifier=new MagnifierSettings{en
 var hoverRect=SelectionGeometry.AroundTap(new Point(430,210),new Rectangle(0,0,1200,900),440,180);
 Check(hoverRect.Contains(new Point(430,210)) && hoverRect.Width==440 && hoverRect.Height==180,"hover text sample stays around cursor");
 Check(SelectionGeometry.AroundTap(new Point(1198,899),new Rectangle(0,0,1200,900),440,180).Bottom==900,"hover region clips near desktop edge");
-Check(new AppSettings().reading.mode==ReadingModes.Cursor,"default mode is automatic cursor reading");
+Check(new AppSettings().reading.mode==ReadingModes.Selection,"manual selection is the default; unsolicited auto reading disabled");
+Check(!new AppSettings().reading.autoReadEnabled,"cursor auto speech requires explicit opt-in");
+Check(!PortableIni.Parse("[読み取り動作]\n読み取りモード=カーソルで自動読み上げ\n").reading.autoReadEnabled,
+    "legacy auto reading mode alone does not opt in");
+Check(PortableIni.Parse("[読み取り動作]\nカーソル自動読み上げを許可=はい\n").reading.autoReadEnabled,
+    "Japanese INI explicit auto speech opt-in works");
+Check(!PortableIni.Parse("[読み取り動作]\nカーソル自動読み上げを許可=いいえ\n").reading.autoReadEnabled,
+    "Japanese INI can explicitly disable auto speech");
+Check(PortableIni.Write(new AppSettings()).Contains("カーソル自動読み上げを許可=いいえ"),
+    "Japanese INI emits opt-in off by default");
 Check(new AppSettings().reading.ocrFallback,"OCR fallback enabled by default");
-Check(AppSettings.Normalize(new AppSettings{reading=new ReadingSettings{mode="strange",dwellMilliseconds=5}}).reading.mode==ReadingModes.Cursor,"invalid mode defaults to cursor");
+Check(AppSettings.Normalize(new AppSettings{reading=new ReadingSettings{mode="strange",dwellMilliseconds=5}}).reading.mode==ReadingModes.Selection,"invalid mode defaults to safe manual selection");
 Check(AppSettings.Normalize(new AppSettings{reading=new ReadingSettings{mode=ReadingModes.Manga,dwellMilliseconds=5000}}).reading.dwellMilliseconds==2000,"hover dwell bounded");
 Check(ReadingModes.IsAuto(ReadingModes.Manga) && !ReadingModes.IsAuto(ReadingModes.Selection),"only cursor and manga are automatic");
 Check(AppSettings.Normalize(new AppSettings{reading=new ReadingSettings{mode=ReadingModes.Off}}).reading.mode==ReadingModes.Off,"off mode is persistent");
