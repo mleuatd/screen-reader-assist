@@ -492,11 +492,12 @@ namespace Win11Magnifier
             if (buttonHeld || !client.Contains(pointer)) return DrawerSide.None;
             const int edge = 16;
             if (pointer.Y - client.Top <= edge) return DrawerSide.Top;
-            int leftDistance = screen.Left - virtualDesktop.Left;
-            int rightDistance = virtualDesktop.Right - screen.Right;
-            bool leftMonitor = leftDistance <= rightDistance;
-            if (leftMonitor && pointer.X - client.Left <= edge) return DrawerSide.Left;
-            if (!leftMonitor && client.Right - 1 - pointer.X <= edge) return DrawerSide.Right;
+            // An interior monitor is not a physical desktop edge.
+            // Do not capture gestures on a middle display's left/right edge.
+            if (screen.Left <= virtualDesktop.Left &&
+                pointer.X - client.Left <= edge) return DrawerSide.Left;
+            if (screen.Right >= virtualDesktop.Right &&
+                client.Right - 1 - pointer.X <= edge) return DrawerSide.Right;
             return DrawerSide.None;
         }
 
@@ -517,6 +518,14 @@ namespace Win11Magnifier
             }
             int x = Math.Max(0, Math.Min(maxX, anchor - drawer.Width / 2));
             return new Point(x, open ? 0 : -drawer.Height);
+        }
+
+        internal static bool RetainForInteraction(bool mouseButtonHeld,
+            bool dropdownOpen, bool textFocused, bool keyboardMode,
+            bool drawerHasFocus, bool largeControlsOpen)
+        {
+            return mouseButtonHeld || dropdownOpen || textFocused ||
+                (keyboardMode && drawerHasFocus) || largeControlsOpen;
         }
 
         internal static bool ShouldClose(int now, int lastInteraction,
@@ -546,6 +555,8 @@ namespace Win11Magnifier
         private int drawerAnchor;
         private int lastDrawerInteraction;
         private bool drawerMoving;
+        private bool drawerKeyboardMode;
+        private Point lastDrawerPointer = new Point(int.MinValue, int.MinValue);
         private readonly FlowLayoutPanel bar;
         private readonly ComboBox displaySelector;
         private readonly Button plusButton;
@@ -867,6 +878,16 @@ namespace Win11Magnifier
             };
             bar.Controls.Add(pinDrawer);
 
+            // A focused mouse-clicked button should NOT keep the drawer open
+            // forever. Only intentional keyboard navigation retains focus.
+            KeyDown += delegate {
+                if (controlDrawer.ContainsFocus)
+                {
+                    drawerKeyboardMode = true;
+                    lastDrawerInteraction = Environment.TickCount;
+                }
+            };
+
             gestureHud = new GestureHud(this);
             voicePreviewTimer = new Timer();
             voicePreviewTimer.Interval = 200;
@@ -1064,6 +1085,11 @@ namespace Win11Magnifier
         {
             if (controlDrawer == null || controlDrawer.IsDisposed ||
                 IsDisposed || closing || WindowState == FormWindowState.Minimized) return;
+            if (cursor != lastDrawerPointer)
+            {
+                drawerKeyboardMode = false;
+                lastDrawerPointer = cursor;
+            }
             Rectangle client = RectangleToScreen(ClientRectangle);
             Screen screen = Screen.FromHandle(Handle);
             DrawerSide side = DrawerMath.RevealSide(
@@ -1091,12 +1117,20 @@ namespace Win11Magnifier
                 drawerOpen = true;
                 lastDrawerInteraction = now;
             }
-            else if (drawerOpen && DrawerMath.ShouldClose(now,
-                         lastDrawerInteraction,
-                         Control.MouseButtons != MouseButtons.None,
-                         displaySelector.DroppedDown))
+            else if (drawerOpen)
             {
-                drawerOpen = false;
+                // A button hold, focused editor, keyboard traversal or open
+                // combobox is still active usage: never retract beneath it.
+                bool interacting = DrawerMath.RetainForInteraction(
+                    Control.MouseButtons != MouseButtons.None,
+                    displaySelector.DroppedDown, speechText.Focused,
+                    drawerKeyboardMode, controlDrawer.ContainsFocus,
+                    largeControlsWindow != null && largeControlsWindow.Visible);
+                if (interacting)
+                    lastDrawerInteraction = now;
+                else if (DrawerMath.ShouldClose(now, lastDrawerInteraction,
+                             false, false))
+                    drawerOpen = false;
             }
 
             Point target = DrawerMath.Target(ClientSize, controlDrawer.Size,
