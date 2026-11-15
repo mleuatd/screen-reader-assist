@@ -105,6 +105,23 @@ Check(SelectionGeometry.AroundTap(new Point(1198,899),new Rectangle(0,0,1200,900
 Check(new AppSettings().reading.mode==ReadingModes.Selection,"manual selection is the default; unsolicited auto reading disabled");
 Check(!new AppSettings().reading.autoReadEnabled,"cursor auto speech requires explicit opt-in");
 Check(new AppSettings().reading.dwellMilliseconds==300,"fast hover default is 300 ms");
+Check(HoverSpeechGuard.CanDeliver(new Point(120,100),new Point(120,100),4,4,false,false,false,true,true),
+    "hover current and idle state permits reading");
+Check(!HoverSpeechGuard.CanDeliver(new Point(120,100),new Point(120,100),4,4,true,false,false,true,true),
+    "hover does not speak while any mouse button is held during OCR completion");
+Check(!HoverSpeechGuard.CanDeliver(new Point(120,100),new Point(120,100),4,5,false,false,false,true,true),
+    "hover rejects stale OCR generation");
+Check(!HoverSpeechGuard.CanDeliver(new Point(120,100),new Point(132,100),4,4,false,false,false,true,true),
+    "hover rejects cursor moved more than 10 pixels");
+Check(!HoverSpeechGuard.CanDeliver(new Point(120,100),new Point(120,100),4,4,false,false,false,false,true),
+    "hover rejects automatic reading disabled");
+Check(!HoverSpeechGuard.CanDeliver(new Point(120,100),new Point(120,100),4,4,false,false,true,true,true),
+    "hover rejects reading with settings visible");
+Check(!HoverSpeechGuard.CanDeliver(new Point(120,100),new Point(120,100),4,4,false,true,false,true,true),
+    "hover rejects speech during manual reading");
+Check(!HoverSpeechGuard.CanDeliver(new Point(120,100),new Point(120,100),4,4,false,false,false,true,false),
+    "hover rejects inactive or changed reading mode");
+
 Check(AppSettings.Normalize(new AppSettings{reading=new ReadingSettings{dwellMilliseconds=100}}).reading.dwellMilliseconds==200,"hover delay lower bound is 200 ms");
 Check(AppSettings.Normalize(new AppSettings{reading=new ReadingSettings{dwellMilliseconds=250}}).reading.dwellMilliseconds==250,"hover delay 250 ms remains configurable");
 Check(PortableIni.Parse("[読み取り動作]\nカーソル停止時間（ミリ秒）=200\n").reading.dwellMilliseconds==200,"INI retains 200 ms opt-in fast hover");
