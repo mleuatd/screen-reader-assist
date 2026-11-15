@@ -480,9 +480,72 @@ namespace Win11Magnifier
         }
     }
 
+    internal enum DrawerSide { None, Top, Left, Right }
+
+    // Pure coordinate policy that is independent of WinForms controls and
+    // can be regression-tested in Windows PowerShell 5.1 without a GUI.
+    internal static class DrawerMath
+    {
+        internal static DrawerSide RevealSide(Point pointer, Rectangle client,
+            Rectangle screen, Rectangle virtualDesktop, bool buttonHeld)
+        {
+            if (buttonHeld || !client.Contains(pointer)) return DrawerSide.None;
+            const int edge = 16;
+            if (pointer.Y - client.Top <= edge) return DrawerSide.Top;
+            int leftDistance = screen.Left - virtualDesktop.Left;
+            int rightDistance = virtualDesktop.Right - screen.Right;
+            bool leftMonitor = leftDistance <= rightDistance;
+            if (leftMonitor && pointer.X - client.Left <= edge) return DrawerSide.Left;
+            if (!leftMonitor && client.Right - 1 - pointer.X <= edge) return DrawerSide.Right;
+            return DrawerSide.None;
+        }
+
+        internal static Point Target(Size client, Size drawer,
+            DrawerSide side, int anchor, bool open)
+        {
+            int maxX = Math.Max(0, client.Width - drawer.Width);
+            int maxY = Math.Max(0, client.Height - drawer.Height);
+            if (side == DrawerSide.Left)
+            {
+                int y = Math.Max(0, Math.Min(maxY, anchor - drawer.Height / 2));
+                return new Point(open ? 0 : -drawer.Width, y);
+            }
+            if (side == DrawerSide.Right)
+            {
+                int y = Math.Max(0, Math.Min(maxY, anchor - drawer.Height / 2));
+                return new Point(open ? maxX : client.Width, y);
+            }
+            int x = Math.Max(0, Math.Min(maxX, anchor - drawer.Width / 2));
+            return new Point(x, open ? 0 : -drawer.Height);
+        }
+
+        internal static bool ShouldClose(int now, int lastInteraction,
+            bool mouseButtonHeld, bool menuOpen)
+        {
+            return !mouseButtonHeld && !menuOpen &&
+                unchecked(now - lastInteraction) >= 500;
+        }
+
+        internal static int Approach(int at, int target)
+        {
+            long delta = (long)target - at;
+            if (delta == 0) return target;
+            long step = Math.Min(Math.Abs(delta), Math.Max(18, Math.Abs(delta) / 3));
+            return (int)(at + (delta < 0 ? -step : step));
+        }
+    }
+
     internal sealed class DedicatedViewer : Form
     {
         private readonly Panel viewSpace;
+        private readonly Panel controlDrawer;
+        private readonly CheckBox pinDrawer;
+        private bool drawerPinned;
+        private bool drawerOpen;
+        private DrawerSide drawerSide = DrawerSide.Top;
+        private int drawerAnchor;
+        private int lastDrawerInteraction;
+        private bool drawerMoving;
         private readonly FlowLayoutPanel bar;
         private readonly ComboBox displaySelector;
         private readonly Button plusButton;
@@ -774,10 +837,35 @@ namespace Win11Magnifier
             viewSpace.Resize += delegate { ResizeMagnifier(); };
 
             Controls.Add(viewSpace);
-            Controls.Add(stateLabel);
-            Controls.Add(speechBar);
-            Controls.Add(speechInputBar);
-            Controls.Add(bar);
+
+            // Keep the native magnifier at full size. Toolbars slide over the
+            // magnified image rather than resizing its source or changing zoom.
+            controlDrawer = new Panel();
+            controlDrawer.AccessibleName = "画面端から出てくる拡大鏡の操作バー";
+            controlDrawer.BackColor = Color.FromArgb(17, 23, 35);
+            controlDrawer.Width = Math.Min(1020, Math.Max(350, ClientSize.Width));
+            controlDrawer.Height = bar.Height + speechBar.Height + speechInputBar.Height + stateLabel.Height;
+            controlDrawer.Location = new Point(0, -controlDrawer.Height);
+            controlDrawer.Visible = true;
+            controlDrawer.Controls.Add(stateLabel);
+            controlDrawer.Controls.Add(speechBar);
+            controlDrawer.Controls.Add(speechInputBar);
+            controlDrawer.Controls.Add(bar);
+            Controls.Add(controlDrawer);
+            controlDrawer.BringToFront();
+
+            pinDrawer = new CheckBox();
+            pinDrawer.Text = "操作バーを固定";
+            pinDrawer.AccessibleName = "チェックすると画面端から出てきた操作バーを固定して表示します";
+            pinDrawer.Font = new Font("Meiryo", 11f, FontStyle.Bold);
+            pinDrawer.AutoSize = true;
+            pinDrawer.ForeColor = Color.White;
+            pinDrawer.Margin = new Padding(12, 15, 4, 0);
+            pinDrawer.CheckedChanged += delegate {
+                drawerPinned = pinDrawer.Checked;
+                if (drawerPinned) { drawerOpen = true; lastDrawerInteraction = Environment.TickCount; }
+            };
+            bar.Controls.Add(pinDrawer);
 
             gestureHud = new GestureHud(this);
             voicePreviewTimer = new Timer();
@@ -795,7 +883,7 @@ namespace Win11Magnifier
 
             followTimer = new Timer();
             followTimer.Interval = 40; // 25 checks/sec, only update source on change.
-            followTimer.Tick += delegate { TickFollow(); };
+            followTimer.Tick += delegate { UpdateDrawer(Cursor.Position); TickFollow(); };
             voiceSyncTimer = new Timer();
             voiceSyncTimer.Interval = 350;
             voiceSyncTimer.Tick += delegate {
@@ -881,6 +969,7 @@ namespace Win11Magnifier
                 // Native Magnifier is a separate child HWND, so ordinary Panel
                 // MouseDown/MouseMove handlers would never receive its input.
                 previewInput = new PreviewDragInput(this, magHandle);
+                controlDrawer.BringToFront();
                 ApplyZoom(zoom);
                 ResizeMagnifier();
                 TickFollow();
@@ -956,6 +1045,70 @@ namespace Win11Magnifier
             if (maximize) WindowState = FormWindowState.Maximized;
         }
 
+        private void LayoutDrawer()
+        {
+            if (controlDrawer == null || controlDrawer.IsDisposed) return;
+            int width = Math.Min(1020, Math.Max(1, ClientSize.Width));
+            controlDrawer.Size = new Size(width,
+                bar.Height + speechBar.Height + speechInputBar.Height + stateLabel.Height);
+            // Recalculate physical coordinates when DPI, Snap or display bounds change.
+            if (!drawerOpen && !drawerMoving)
+            {
+                Point hidden = DrawerMath.Target(ClientSize, controlDrawer.Size,
+                    drawerSide, drawerAnchor, false);
+                controlDrawer.Location = hidden;
+            }
+        }
+
+        private void UpdateDrawer(Point cursor)
+        {
+            if (controlDrawer == null || controlDrawer.IsDisposed ||
+                IsDisposed || closing || WindowState == FormWindowState.Minimized) return;
+            Rectangle client = RectangleToScreen(ClientRectangle);
+            Screen screen = Screen.FromHandle(Handle);
+            DrawerSide side = DrawerMath.RevealSide(
+                cursor, client, screen.Bounds, SystemInformation.VirtualScreen,
+                Control.MouseButtons != MouseButtons.None);
+            bool inside = controlDrawer.RectangleToScreen(controlDrawer.ClientRectangle).Contains(cursor)
+                          && controlDrawer.Visible && drawerOpen;
+            int now = Environment.TickCount;
+            if (drawerPinned || inside)
+            {
+                drawerOpen = true;
+                lastDrawerInteraction = now;
+            }
+            else if (side != DrawerSide.None)
+            {
+                // Never change the slide direction while the user is working.
+                if (!drawerOpen)
+                {
+                    drawerSide = side;
+                    Point local = PointToClient(cursor);
+                    drawerAnchor = side == DrawerSide.Top ? local.X : local.Y;
+                    controlDrawer.Location = DrawerMath.Target(ClientSize,
+                        controlDrawer.Size, drawerSide, drawerAnchor, false);
+                }
+                drawerOpen = true;
+                lastDrawerInteraction = now;
+            }
+            else if (drawerOpen && DrawerMath.ShouldClose(now,
+                         lastDrawerInteraction,
+                         Control.MouseButtons != MouseButtons.None,
+                         displaySelector.DroppedDown))
+            {
+                drawerOpen = false;
+            }
+
+            Point target = DrawerMath.Target(ClientSize, controlDrawer.Size,
+                drawerSide, drawerAnchor, drawerOpen);
+            Point at = controlDrawer.Location;
+            int x = DrawerMath.Approach(at.X, target.X);
+            int y = DrawerMath.Approach(at.Y, target.Y);
+            drawerMoving = x != target.X || y != target.Y;
+            if (at.X != x || at.Y != y) controlDrawer.Location = new Point(x, y);
+            if (drawerOpen) controlDrawer.BringToFront();
+        }
+
         private Rectangle ViewRectangleInForm()
         {
             if (!viewSpace.IsHandleCreated) return Rectangle.Empty;
@@ -966,6 +1119,7 @@ namespace Win11Magnifier
         private void ResizeMagnifier()
         {
             if (magHandle == IntPtr.Zero || closing || IsDisposed) return;
+            LayoutDrawer();
             Rectangle r = ViewRectangleInForm();
             if (r.Width < 1 || r.Height < 1) return;
             if (r == lastView) return;

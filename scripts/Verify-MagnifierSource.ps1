@@ -94,4 +94,69 @@ if($viewerSource -notmatch 'StyleAccessibleButton\(button\)' -or
 $startCount=([regex]::Matches($mouseSource,[regex]::Escape('refreshTimer.Start();'))).Count
 if($startCount -ne 1) {throw 'Idle selection timer regression: unexpected active refresh count'}
 Write-Host 'PASS: yellow press/focus, bold Japanese controls, Alt-left opt-in, and idle-timer restraint.'
+# Edge drawer geometry tests do not need real screens or mouse injection.
+$drawerType=[AppDomain]::CurrentDomain.GetAssemblies() |
+    ForEach-Object { $_.GetType('Win11Magnifier.DrawerMath',$false) } |
+    Where-Object { $null -ne $_ } | Select-Object -First 1
+if(-not $drawerType) {throw 'Missing edge drawer geometry policy'}
+$flags=[System.Reflection.BindingFlags]'Static,NonPublic'
+$reveal=$drawerType.GetMethod('RevealSide',$flags)
+$target=$drawerType.GetMethod('Target',$flags)
+$approach=$drawerType.GetMethod('Approach',$flags)
+if(-not $reveal -or -not $target -or -not $approach) {throw 'Incomplete edge drawer geometry API'}
+$client=[System.Drawing.Rectangle]::new(-1920,0,1920,1080)
+$leftScreen=$client
+$desktop=[System.Drawing.Rectangle]::new(-1920,0,5760,1080)
+$rightClient=[System.Drawing.Rectangle]::new(1920,0,1920,1080)
+$rightScreen=$rightClient
+$checks=@(
+    @{p=[System.Drawing.Point]::new(-1918,550);c=$client;s=$leftScreen;held=$false;want='Left'},
+    @{p=[System.Drawing.Point]::new(-1000,4);c=$client;s=$leftScreen;held=$false;want='Top'},
+    @{p=[System.Drawing.Point]::new(3835,550);c=$rightClient;s=$rightScreen;held=$false;want='Right'},
+    @{p=[System.Drawing.Point]::new(3000,7);c=$rightClient;s=$rightScreen;held=$false;want='Top'},
+    @{p=[System.Drawing.Point]::new(-1919,550);c=$client;s=$leftScreen;held=$true;want='None'},
+    @{p=[System.Drawing.Point]::new(-900,500);c=$client;s=$leftScreen;held=$false;want='None'},
+    @{p=[System.Drawing.Point]::new(-1921,500);c=$client;s=$leftScreen;held=$false;want='None'},
+    @{p=[System.Drawing.Point]::new(1923,500);c=$rightClient;s=$rightScreen;held=$false;want='None'}
+)
+foreach($case in $checks) {
+    $side=$reveal.Invoke($null,@($case.p,$case.c,$case.s,$desktop,[bool]$case.held))
+    if($side.ToString() -ne $case.want) {
+        throw ('Edge drawer mismatch: got '+$side+' expected '+$case.want)
+    }
+}
+$sideType=[AppDomain]::CurrentDomain.GetAssemblies() |
+    ForEach-Object { $_.GetType('Win11Magnifier.DrawerSide',$false) } |
+    Where-Object { $null -ne $_ } | Select-Object -First 1
+$size=[System.Drawing.Size]::new(1920,1080)
+$panel=[System.Drawing.Size]::new(1020,249)
+foreach($check in @(
+    @{name='Left';open=$false;x=-1020},
+    @{name='Left';open=$true;x=0},
+    @{name='Right';open=$false;x=1920},
+    @{name='Right';open=$true;x=900}
+)) {
+    $side=[Enum]::Parse($sideType,$check.name)
+    $point=$target.Invoke($null,@($size,$panel,$side,540,[bool]$check.open))
+    if($point.X -ne $check.x) {throw 'Incorrect off-screen drawer slide position'}
+}
+$top=[Enum]::Parse($sideType,'Top')
+$hidden=$target.Invoke($null,@($size,$panel,$top,950,$false))
+$shown=$target.Invoke($null,@($size,$panel,$top,950,$true))
+if($hidden.Y -ne -249 -or $shown.Y -ne 0) {throw 'Top drawer did not slide vertically'}
+if([int]$approach.Invoke($null,@(-200,0)) -le -200) {throw 'Drawer animation did not advance'}
+if([int]$approach.Invoke($null,@(0,0)) -ne 0) {throw 'Drawer animation never settled'}
+$close=$drawerType.GetMethod('ShouldClose',$flags)
+if(-not $close) {throw 'Drawer auto-hide policy missing'}
+foreach($case in @(
+    @{now=1499;last=1000;held=$false;menu=$false;expected=$false},
+    @{now=1500;last=1000;held=$false;menu=$false;expected=$true},
+    @{now=2500;last=1000;held=$true;menu=$false;expected=$false},
+    @{now=2500;last=1000;held=$false;menu=$true;expected=$false}
+)) {
+    $result=[bool]$close.Invoke($null,@([int]$case.now,[int]$case.last,[bool]$case.held,[bool]$case.menu))
+    if($result -ne $case.expected){throw 'Drawer hide grace or interaction suppression regression'}
+}
+Write-Host 'PASS: drawer closes after 500 ms; active drag and open menus prevent accidental hiding.'
+Write-Host 'PASS: left/right/top reveal, negative monitor coordinates, drag suppression, hide and slide math.'
 Write-Host 'PASS: 24px horizontal steps, negative drag direction and edge thresholds verified.'
