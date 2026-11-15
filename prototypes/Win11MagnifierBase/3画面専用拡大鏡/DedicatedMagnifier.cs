@@ -891,6 +891,7 @@ namespace Win11Magnifier
                 try
                 {
                     globalOcr = new GlobalOcrSelection(this);
+                    globalOcr.AllowAltLeft = altLeftEnabled;
                     globalOcr.Enabled = globalOcrEnabled;
                     globalOcr.Start();
                 }
