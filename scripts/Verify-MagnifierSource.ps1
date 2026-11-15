@@ -64,5 +64,20 @@ $viewer=[AppDomain]::CurrentDomain.GetAssemblies() |
 if(-not $viewer.GetMethod('ForwardPreviewMouse',[System.Reflection.BindingFlags]'Instance,NonPublic')) {
     throw 'Magnifier mouse gestures are not connected to global hook'
 }
+$policy=$compiled.GetMethod('ShouldBeginAltSelection',[System.Reflection.BindingFlags]'Static,NonPublic')
+if(-not $policy) {throw 'Global Alt selection compatibility policy missing'}
+foreach($case in @(
+    @{msg=0x0204;alt=$true;ctrl=$false;win=$false;left=$false;expect=$true},
+    @{msg=0x0201;alt=$true;ctrl=$false;win=$false;left=$false;expect=$false},
+    @{msg=0x0201;alt=$true;ctrl=$false;win=$false;left=$true;expect=$true},
+    @{msg=0x0204;alt=$true;ctrl=$true;win=$false;left=$false;expect=$false},
+    @{msg=0x0204;alt=$true;ctrl=$false;win=$true;left=$false;expect=$false},
+    @{msg=0x0204;alt=$false;ctrl=$false;win=$false;left=$false;expect=$false},
+    @{msg=0x0202;alt=$true;ctrl=$false;win=$false;left=$true;expect=$false}
+)) {
+    $actual=[bool]$policy.Invoke($null,@([int]$case.msg,[bool]$case.alt,[bool]$case.ctrl,[bool]$case.win,[bool]$case.left))
+    if($actual -ne $case.expect) {throw 'Alt-mouse compatibility policy regression'}
+}
+Write-Host 'PASS: Alt+right works, Alt+left opt-in; Ctrl/Win/ordinary mouse ignored.'
 Write-Host 'PASS: Japanese magnifier Alt+right selection and global preview gesture hook compile.'
 Write-Host 'PASS: 24px horizontal steps, negative drag direction and edge thresholds verified.'
