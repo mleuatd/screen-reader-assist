@@ -67,6 +67,9 @@ public sealed class MainForm : Form
         if(SharedSpeechRate.TryRead(out var sharedRate)) _settings.speech.rate=sharedRate;
         else SharedSpeechRate.Publish(_settings.speech.rate);
         Text="Screen Reader Assist 設定";
+        Font=new Font("Meiryo",12f,FontStyle.Bold);
+        BackColor=Color.FromArgb(17,23,35);
+        ForeColor=Color.White;
         AccessibleName="Screen Reader Assist 設定画面";
         MinimumSize=new Size(660,610);
         Size=new Size(720,660);
@@ -248,7 +251,31 @@ public sealed class MainForm : Form
             panel.Controls.Add(lab,0,r);panel.SetColumnSpan(lab,2);
         }
         static void AddButton(FlowLayoutPanel p,string text,Action cb) {
-            var b=new Button {Text=text,AutoSize=true,Margin=new Padding(2,3,6,6),AccessibleName=text};
+            var b=new Button {Text=text,AutoSize=true,MinimumSize=new Size(120,48),
+                Margin=new Padding(4,4,6,6),AccessibleName=text,
+                Font=new Font("Meiryo",12f,FontStyle.Bold),
+                FlatStyle=FlatStyle.Flat,UseVisualStyleBackColor=false,
+                BackColor=Color.FromArgb(42,64,91),ForeColor=Color.White};
+            b.FlatAppearance.BorderColor=Color.FromArgb(180,207,242);
+            b.FlatAppearance.BorderSize=2;
+            b.FlatAppearance.MouseOverBackColor=Color.FromArgb(70,99,136);
+            b.FlatAppearance.MouseDownBackColor=Color.FromArgb(255,224,47);
+            bool pressed=false;
+            Action render=()=>{
+                if(b.IsDisposed)return;
+                b.BackColor=pressed?Color.FromArgb(255,224,47):Color.FromArgb(42,64,91);
+                b.ForeColor=pressed?Color.Black:Color.White;
+                b.FlatAppearance.BorderColor=pressed||b.Focused
+                    ?Color.FromArgb(255,224,47):Color.FromArgb(180,207,242);
+                b.FlatAppearance.BorderSize=pressed||b.Focused?4:2;
+            };
+            b.MouseDown+=(_,e)=>{if(e.Button==MouseButtons.Left){pressed=true;render();}};
+            b.MouseUp+=(_,_)=>{pressed=false;render();};
+            b.MouseLeave+=(_,_)=>{pressed=false;render();};
+            b.GotFocus+=(_,_)=>render();
+            b.LostFocus+=(_,_)=>{pressed=false;render();};
+            b.KeyDown+=(_,e)=>{if(e.KeyCode==Keys.Space||e.KeyCode==Keys.Enter){pressed=true;render();}};
+            b.KeyUp+=(_,_)=>{pressed=false;render();};
             b.Click+=(_,_)=>cb();p.Controls.Add(b);
         }
     }
