@@ -547,6 +547,8 @@ namespace Win11Magnifier
         private int drawerAnchor;
         private int lastDrawerInteraction;
         private bool drawerMoving;
+        private bool drawerKeyboardMode;
+        private Point lastDrawerPointer = new Point(int.MinValue, int.MinValue);
         private readonly FlowLayoutPanel bar;
         private readonly ComboBox displaySelector;
         private readonly Button plusButton;
@@ -868,6 +870,16 @@ namespace Win11Magnifier
             };
             bar.Controls.Add(pinDrawer);
 
+            // A focused mouse-clicked button should NOT keep the drawer open
+            // forever. Only intentional keyboard navigation retains focus.
+            KeyDown += delegate {
+                if (controlDrawer.ContainsFocus)
+                {
+                    drawerKeyboardMode = true;
+                    lastDrawerInteraction = Environment.TickCount;
+                }
+            };
+
             gestureHud = new GestureHud(this);
             voicePreviewTimer = new Timer();
             voicePreviewTimer.Interval = 200;
@@ -1065,6 +1077,11 @@ namespace Win11Magnifier
         {
             if (controlDrawer == null || controlDrawer.IsDisposed ||
                 IsDisposed || closing || WindowState == FormWindowState.Minimized) return;
+            if (cursor != lastDrawerPointer)
+            {
+                drawerKeyboardMode = false;
+                lastDrawerPointer = cursor;
+            }
             Rectangle client = RectangleToScreen(ClientRectangle);
             Screen screen = Screen.FromHandle(Handle);
             DrawerSide side = DrawerMath.RevealSide(
@@ -1097,7 +1114,8 @@ namespace Win11Magnifier
                 // A button hold, focused editor, keyboard traversal or open
                 // combobox is still active usage: never retract beneath it.
                 bool interacting = Control.MouseButtons != MouseButtons.None ||
-                    displaySelector.DroppedDown || controlDrawer.ContainsFocus ||
+                    displaySelector.DroppedDown || speechText.Focused ||
+                    (drawerKeyboardMode && controlDrawer.ContainsFocus) ||
                     (largeControlsWindow != null && largeControlsWindow.Visible);
                 if (interacting)
                     lastDrawerInteraction = now;
