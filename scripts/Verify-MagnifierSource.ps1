@@ -170,5 +170,11 @@ if($viewerSource -notmatch 'controlDrawer.ContainsFocus' -or
 }
 Write-Host 'PASS: drawer stays visible during keyboard focus and text entry.'
 Write-Host 'PASS: drawer closes after 500 ms; active drag and open menus prevent accidental hiding.'
+# Mouse pointer near a desktop seam must not trigger the side drawer.
+$wideClient=[System.Drawing.Rectangle]::new(0,0,1920,1080)
+$seamPointer=[System.Drawing.Point]::new(1918,480)
+$seam=$reveal.Invoke($null,@($seamPointer,$wideClient,$centerScreen,$desktop,$false))
+if($seam.ToString() -ne 'None') {throw 'Interior display seam activated side drawer'}
+# No C# WinForms GUI launch is performed by this test job.
 Write-Host 'PASS: left/right/top reveal, negative monitor coordinates, drag suppression, hide and slide math.'
 Write-Host 'PASS: 24px horizontal steps, negative drag direction and edge thresholds verified.'
