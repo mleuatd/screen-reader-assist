@@ -81,7 +81,7 @@ foreach($case in @(
 Write-Host 'PASS: Alt+right works, Alt+left opt-in; Ctrl/Win/ordinary mouse ignored.'
 Write-Host 'PASS: Japanese magnifier Alt+right selection and global preview gesture hook compile.'
 # Compile is not a visual verification; enforce the code-level accessibility contract.
-$viewerSource=[IO.File]::ReadAllText((Join-Path $viewer.DirectoryName 'DedicatedMagnifier.cs'))
+$viewerSource=[IO.File]::ReadAllText((Join-Path (Split-Path -Parent $mouse) 'DedicatedMagnifier.cs'))
 $mouseSource=[IO.File]::ReadAllText($mouse)
 if($viewerSource -notmatch 'StyleAccessibleButton\(button\)' -or
    $viewerSource -notmatch 'StyleAccessibleButton\(b\)' -or
