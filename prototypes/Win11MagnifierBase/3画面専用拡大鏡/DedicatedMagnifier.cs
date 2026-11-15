@@ -520,6 +520,14 @@ namespace Win11Magnifier
             return new Point(x, open ? 0 : -drawer.Height);
         }
 
+        internal static bool RetainForInteraction(bool mouseButtonHeld,
+            bool dropdownOpen, bool textFocused, bool keyboardMode,
+            bool drawerHasFocus, bool largeControlsOpen)
+        {
+            return mouseButtonHeld || dropdownOpen || textFocused ||
+                (keyboardMode && drawerHasFocus) || largeControlsOpen;
+        }
+
         internal static bool ShouldClose(int now, int lastInteraction,
             bool mouseButtonHeld, bool menuOpen)
         {
@@ -1113,10 +1121,11 @@ namespace Win11Magnifier
             {
                 // A button hold, focused editor, keyboard traversal or open
                 // combobox is still active usage: never retract beneath it.
-                bool interacting = Control.MouseButtons != MouseButtons.None ||
-                    displaySelector.DroppedDown || speechText.Focused ||
-                    (drawerKeyboardMode && controlDrawer.ContainsFocus) ||
-                    (largeControlsWindow != null && largeControlsWindow.Visible);
+                bool interacting = DrawerMath.RetainForInteraction(
+                    Control.MouseButtons != MouseButtons.None,
+                    displaySelector.DroppedDown, speechText.Focused,
+                    drawerKeyboardMode, controlDrawer.ContainsFocus,
+                    largeControlsWindow != null && largeControlsWindow.Visible);
                 if (interacting)
                     lastDrawerInteraction = now;
                 else if (DrawerMath.ShouldClose(now, lastDrawerInteraction,
