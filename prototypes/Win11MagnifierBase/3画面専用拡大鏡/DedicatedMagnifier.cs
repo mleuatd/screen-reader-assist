@@ -537,7 +537,7 @@ namespace Win11Magnifier
         private bool drawerOpen;
         private DrawerSide drawerSide = DrawerSide.Top;
         private int drawerAnchor;
-        private long lastDrawerInteraction;
+        private int lastDrawerInteraction;
         private bool drawerMoving;
         private readonly FlowLayoutPanel bar;
         private readonly ComboBox displaySelector;
@@ -856,7 +856,7 @@ namespace Win11Magnifier
             pinDrawer.Margin = new Padding(12, 15, 4, 0);
             pinDrawer.CheckedChanged += delegate {
                 drawerPinned = pinDrawer.Checked;
-                if (drawerPinned) { drawerOpen = true; lastDrawerInteraction = Environment.TickCount64; }
+                if (drawerPinned) { drawerOpen = true; lastDrawerInteraction = Environment.TickCount; }
             };
             bar.Controls.Add(pinDrawer);
 
@@ -1064,7 +1064,7 @@ namespace Win11Magnifier
                 Control.MouseButtons != MouseButtons.None);
             bool inside = controlDrawer.RectangleToScreen(controlDrawer.ClientRectangle).Contains(cursor)
                           && controlDrawer.Visible && drawerOpen;
-            long now = Environment.TickCount64;
+            int now = Environment.TickCount;
             if (drawerPinned || inside)
             {
                 drawerOpen = true;
@@ -1084,7 +1084,7 @@ namespace Win11Magnifier
                 drawerOpen = true;
                 lastDrawerInteraction = now;
             }
-            else if (drawerOpen && now - lastDrawerInteraction >= 500 &&
+            else if (drawerOpen && unchecked(now - lastDrawerInteraction) >= 500 &&
                      !displaySelector.DroppedDown &&
                      !speechText.Focused)
             {
