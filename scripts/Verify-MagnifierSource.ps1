@@ -146,5 +146,17 @@ $shown=$target.Invoke($null,@($size,$panel,$top,950,$true))
 if($hidden.Y -ne -249 -or $shown.Y -ne 0) {throw 'Top drawer did not slide vertically'}
 if([int]$approach.Invoke($null,@(-200,0)) -le -200) {throw 'Drawer animation did not advance'}
 if([int]$approach.Invoke($null,@(0,0)) -ne 0) {throw 'Drawer animation never settled'}
+$close=$drawerType.GetMethod('ShouldClose',$flags)
+if(-not $close) {throw 'Drawer auto-hide policy missing'}
+foreach($case in @(
+    @{now=1499;last=1000;held=$false;menu=$false;expected=$false},
+    @{now=1500;last=1000;held=$false;menu=$false;expected=$true},
+    @{now=2500;last=1000;held=$true;menu=$false;expected=$false},
+    @{now=2500;last=1000;held=$false;menu=$true;expected=$false}
+)) {
+    $result=[bool]$close.Invoke($null,@([int]$case.now,[int]$case.last,[bool]$case.held,[bool]$case.menu))
+    if($result -ne $case.expected){throw 'Drawer hide grace or interaction suppression regression'}
+}
+Write-Host 'PASS: drawer closes after 500 ms; active drag and open menus prevent accidental hiding.'
 Write-Host 'PASS: left/right/top reveal, negative monitor coordinates, drag suppression, hide and slide math.'
 Write-Host 'PASS: 24px horizontal steps, negative drag direction and edge thresholds verified.'
