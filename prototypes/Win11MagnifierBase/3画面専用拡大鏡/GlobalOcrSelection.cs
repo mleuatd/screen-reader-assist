@@ -41,6 +41,7 @@ namespace Win11Magnifier
         private IntPtr hook = IntPtr.Zero;
         private bool disposed;
         private bool enabled = true;
+        private bool allowAltLeft;
         private bool selecting;
         private int selectionButtonKey;
         private int selectionButtonUpMessage;
@@ -85,6 +86,19 @@ namespace Win11Magnifier
         [DllImport("user32.dll")]
         private static extern short GetAsyncKeyState(int key);
 
+        internal bool AllowAltLeft
+        {
+            get { return allowAltLeft; }
+            set { allowAltLeft = value; if (!value && selecting && selectionButtonKey == VK_LBUTTON) CancelSelection(); }
+        }
+
+        internal static bool ShouldBeginAltSelection(int message, bool alt, bool control,
+            bool windows, bool allowLeft)
+        {
+            return alt && !control && !windows &&
+                (message == WM_RBUTTONDOWN || (allowLeft && message == WM_LBUTTONDOWN));
+        }
+
         internal bool Enabled
         {
             get { return enabled; }
@@ -115,7 +129,7 @@ namespace Win11Magnifier
             if (hook == IntPtr.Zero)
                 throw new InvalidOperationException("Alt＋ドラッグ用の入力監視を開始できません (" +
                     Marshal.GetLastWin32Error().ToString() + ")");
-            refreshTimer.Start();
+            // Refresh only while actively selecting; idle timer wakeups are unnecessary.
         }
 
         private static bool Pressed(int key) { return (GetAsyncKeyState(key) & 0x8000) != 0; }
@@ -146,10 +160,9 @@ namespace Win11Magnifier
                         return new IntPtr(1);
                 }
 
-                if ((msg == WM_LBUTTONDOWN || msg == WM_RBUTTONDOWN) &&
-                    !selecting && enabled && !busy &&
-                    Pressed(VK_MENU) && !Pressed(VK_CONTROL) &&
-                    !Pressed(VK_LWIN) && !Pressed(VK_RWIN))
+                if (!selecting && enabled && !busy &&
+                    ShouldBeginAltSelection(msg, Pressed(VK_MENU), Pressed(VK_CONTROL),
+                        Pressed(VK_LWIN) || Pressed(VK_RWIN), allowAltLeft))
                 {
                     LowLevelMouseInfo p = (LowLevelMouseInfo)Marshal.PtrToStructure(info, typeof(LowLevelMouseInfo));
                     from = new Point(p.pt.x, p.pt.y);
@@ -158,6 +171,7 @@ namespace Win11Magnifier
                     selectionButtonUpMessage = msg == WM_RBUTTONDOWN ? WM_RBUTTONUP : WM_LBUTTONUP;
                     selecting = true;
                     selectionStartedAt = Environment.TickCount;
+                    refreshTimer.Start();
                     outlineVisible = false;
                     // Suppress only gestures started as Alt+left or Alt+right mouse down.
                     // The target app must not receive a stray click/context menu.
@@ -170,6 +184,7 @@ namespace Win11Magnifier
                     if (msg == selectionButtonUpMessage)
                     {
                         selecting = false;
+                        refreshTimer.Stop();
                         selectionButtonKey = 0;
                         selectionButtonUpMessage = 0;
                         completedSelection = true;
@@ -225,6 +240,7 @@ namespace Win11Magnifier
 
         private void CancelSelection()
         {
+            refreshTimer.Stop();
             selecting = false;
             selectionButtonKey = 0;
             selectionButtonUpMessage = 0;
