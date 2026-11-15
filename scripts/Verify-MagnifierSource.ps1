@@ -109,6 +109,7 @@ $leftScreen=$client
 $desktop=[System.Drawing.Rectangle]::new(-1920,0,5760,1080)
 $rightClient=[System.Drawing.Rectangle]::new(1920,0,1920,1080)
 $rightScreen=$rightClient
+$centerScreen=[System.Drawing.Rectangle]::new(0,0,1920,1080)
 $checks=@(
     @{p=[System.Drawing.Point]::new(-1918,550);c=$client;s=$leftScreen;held=$false;want='Left'},
     @{p=[System.Drawing.Point]::new(-1000,4);c=$client;s=$leftScreen;held=$false;want='Top'},
@@ -117,7 +118,10 @@ $checks=@(
     @{p=[System.Drawing.Point]::new(-1919,550);c=$client;s=$leftScreen;held=$true;want='None'},
     @{p=[System.Drawing.Point]::new(-900,500);c=$client;s=$leftScreen;held=$false;want='None'},
     @{p=[System.Drawing.Point]::new(-1921,500);c=$client;s=$leftScreen;held=$false;want='None'},
-    @{p=[System.Drawing.Point]::new(1923,500);c=$rightClient;s=$rightScreen;held=$false;want='None'}
+    @{p=[System.Drawing.Point]::new(1923,500);c=$rightClient;s=$rightScreen;held=$false;want='None'},
+    @{p=[System.Drawing.Point]::new(2,500);c=$centerScreen;s=$centerScreen;held=$false;want='None'},
+    @{p=[System.Drawing.Point]::new(1917,500);c=$centerScreen;s=$centerScreen;held=$false;want='None'},
+    @{p=[System.Drawing.Point]::new(1000,2);c=$centerScreen;s=$centerScreen;held=$false;want='Top'}
 )
 foreach($case in $checks) {
     $side=$reveal.Invoke($null,@($case.p,$case.c,$case.s,$desktop,[bool]$case.held))
@@ -157,6 +161,14 @@ foreach($case in @(
     $result=[bool]$close.Invoke($null,@([int]$case.now,[int]$case.last,[bool]$case.held,[bool]$case.menu))
     if($result -ne $case.expected){throw 'Drawer hide grace or interaction suppression regression'}
 }
+# The 500ms countdown must reset while a form control remains focused.
+# Otherwise pressing Tab or editing the speech field hides the UI underneath users.
+if($viewerSource -notmatch 'controlDrawer.ContainsFocus' -or
+   $viewerSource -notmatch 'lastDrawerInteraction = now;' -or
+   $viewerSource -notmatch 'displaySelector.DroppedDown') {
+    throw 'Drawer must stay shown while controls are focused or a dropdown is open'
+}
+Write-Host 'PASS: drawer stays visible during keyboard focus and text entry.'
 Write-Host 'PASS: drawer closes after 500 ms; active drag and open menus prevent accidental hiding.'
 Write-Host 'PASS: left/right/top reveal, negative monitor coordinates, drag suppression, hide and slide math.'
 Write-Host 'PASS: 24px horizontal steps, negative drag direction and edge thresholds verified.'
