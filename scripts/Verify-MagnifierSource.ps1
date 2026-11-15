@@ -80,4 +80,22 @@ foreach($case in @(
 }
 Write-Host 'PASS: Alt+right works, Alt+left opt-in; Ctrl/Win/ordinary mouse ignored.'
 Write-Host 'PASS: Japanese magnifier Alt+right selection and global preview gesture hook compile.'
+# Compile is not a visual verification; enforce the code-level accessibility contract.
+$viewerSource=[IO.File]::ReadAllText((Join-Path $viewer.DirectoryName 'DedicatedMagnifier.cs'))
+$mouseSource=[IO.File]::ReadAllText($mouse)
+if($viewerSource -notmatch 'StyleAccessibleButton\(button\)' -or
+   $viewerSource -notmatch 'StyleAccessibleButton\(b\)' -or
+   $viewerSource -notmatch 'Color.FromArgb\(255, 224, 47\)' -or
+   $viewerSource -notmatch 'Font\("Meiryo", 21f, FontStyle.Bold\)' -or
+   $viewerSource -notmatch 'altLeftEnabled = false' -or
+   $viewerSource -notmatch 'globalOcr.AllowAltLeft = altLeftEnabled') {
+    throw 'Accessible pressed/focus button styling or safe Alt-left initialization missing'
+}
+if($mouseSource -match '(?m)^\s*refreshTimer.Start\(\);\s*
+) {
+    $startCount=[regex]::Matches($mouseSource,'(?m)^\s*refreshTimer.Start\(\);\s*
+).Count
+    if($startCount -ne 1) {throw 'Selection outline idle timer regression'}
+} else {throw 'Active selection refresh timer missing'}
+Write-Host 'PASS: yellow press/focus, bold Japanese controls, Alt-left opt-in, and idle-timer restraint.'
 Write-Host 'PASS: 24px horizontal steps, negative drag direction and edge thresholds verified.'
