@@ -492,6 +492,7 @@ namespace Win11Magnifier
         private readonly CheckBox dragToggle;
         private readonly CheckBox dragVoiceToggle;
         private readonly CheckBox globalOcrToggle;
+        private readonly CheckBox altLeftToggle;
         private readonly FlowLayoutPanel speechBar;
         private readonly Panel speechInputBar;
         private readonly Label voiceRateLabel;
@@ -521,6 +522,7 @@ namespace Win11Magnifier
         private SpeechSynthesizer speechSynth;
         private GlobalOcrSelection globalOcr;
         private bool globalOcrEnabled = true;
+        private bool altLeftEnabled = false; // Alt+left often belongs to other apps
         private bool updatingDisplays;
         private bool closing;
         private string savedDevice = "";
@@ -664,8 +666,8 @@ namespace Win11Magnifier
             bar.Controls.Add(dragVoiceToggle);
 
             globalOcrToggle = new CheckBox();
-            globalOcrToggle.Text = "Alt＋右／左ドラッグ：範囲読み上げ";
-            globalOcrToggle.AccessibleName = "他のアプリを操作中でもAltと右ドラッグ、または左ドラッグで囲んだ範囲をOCRで読み上げます";
+            globalOcrToggle.Text = "Alt＋右ドラッグ：範囲読み上げ";
+            globalOcrToggle.AccessibleName = "必要な時だけAltと右ドラッグによる範囲OCRを有効にします。他のアプリと競合する場合はオフにできます";
             globalOcrToggle.Checked = globalOcrEnabled;
             globalOcrToggle.AutoSize = true;
             globalOcrToggle.Font = new Font("Yu Gothic UI", 11.5f);
@@ -677,6 +679,21 @@ namespace Win11Magnifier
                 SaveSettings();
             };
             bar.Controls.Add(globalOcrToggle);
+
+            altLeftToggle = new CheckBox();
+            altLeftToggle.Text = "Alt＋左も使用（競合注意・既定OFF）";
+            altLeftToggle.AccessibleName = "他のアプリのAltと左クリック操作を妨げる恐れがあるため通常は無効。必要時だけ有効化";
+            altLeftToggle.Checked = altLeftEnabled;
+            altLeftToggle.AutoSize = true;
+            altLeftToggle.Font = new Font("Meiryo", 11.5f, FontStyle.Bold);
+            altLeftToggle.ForeColor = Color.White;
+            altLeftToggle.Margin = new Padding(12, 15, 4, 0);
+            altLeftToggle.CheckedChanged += delegate {
+                altLeftEnabled = altLeftToggle.Checked;
+                if (globalOcr != null) globalOcr.AllowAltLeft = altLeftEnabled;
+                SaveSettings();
+            };
+            bar.Controls.Add(altLeftToggle);
 
             speechBar = new FlowLayoutPanel();
             speechBar.Dock = DockStyle.Bottom;
@@ -798,16 +815,47 @@ namespace Win11Magnifier
             Button b = new Button();
             b.Text = caption;
             b.AccessibleName = accessibleName;
-            b.Font = new Font("Yu Gothic UI", 11.5f, FontStyle.Bold);
+            b.Font = new Font("Meiryo", 11.5f, FontStyle.Bold);
             b.Size = new Size(width, 47);
             b.Margin = new Padding(4, 3, 4, 3);
             b.FlatStyle = FlatStyle.Flat;
             b.FlatAppearance.BorderColor = Color.FromArgb(150, 185, 225);
-            b.FlatAppearance.BorderSize = 1;
-            b.BackColor = Color.FromArgb(50, 74, 104);
-            b.ForeColor = Color.White;
-            b.UseVisualStyleBackColor = false;
+            StyleAccessibleButton(b);
             return b;
+        }
+
+        // Pressed = vivid yellow/black; keyboard focus = thick yellow outline.
+        // Use a Japanese bold face rather than artificially thick strokes that close kanji.
+        private static void StyleAccessibleButton(Button button)
+        {
+            Color normal = Color.FromArgb(42, 64, 91);
+            Color bright = Color.FromArgb(255, 224, 47);
+            button.UseVisualStyleBackColor = false;
+            button.BackColor = normal;
+            button.ForeColor = Color.White;
+            button.FlatAppearance.BorderColor = Color.FromArgb(180, 207, 242);
+            button.FlatAppearance.BorderSize = 2;
+            button.FlatAppearance.MouseOverBackColor = Color.FromArgb(70, 99, 136);
+            button.FlatAppearance.MouseDownBackColor = bright;
+            Action<bool> paint = delegate(bool pressed) {
+                if (button.IsDisposed) return;
+                button.BackColor = pressed ? bright : normal;
+                button.ForeColor = pressed ? Color.Black : Color.White;
+                button.FlatAppearance.BorderColor = pressed || button.Focused
+                    ? bright : Color.FromArgb(180, 207, 242);
+                button.FlatAppearance.BorderSize = pressed || button.Focused ? 4 : 2;
+            };
+            button.MouseDown += delegate(object sender, MouseEventArgs e) {
+                if (e.Button == MouseButtons.Left) paint(true);
+            };
+            button.MouseUp += delegate { paint(false); };
+            button.MouseLeave += delegate { paint(false); };
+            button.GotFocus += delegate { paint(false); };
+            button.LostFocus += delegate { paint(false); };
+            button.KeyDown += delegate(object sender, KeyEventArgs e) {
+                if (e.KeyCode == Keys.Space || e.KeyCode == Keys.Enter) paint(true);
+            };
+            button.KeyUp += delegate { paint(false); };
         }
 
         private void StartViewer()
@@ -843,6 +891,7 @@ namespace Win11Magnifier
                 try
                 {
                     globalOcr = new GlobalOcrSelection(this);
+                    globalOcr.AllowAltLeft = altLeftEnabled;
                     globalOcr.Enabled = globalOcrEnabled;
                     globalOcr.Start();
                 }
@@ -1051,11 +1100,8 @@ namespace Win11Magnifier
                     button.Dock = DockStyle.Fill;
                     button.Margin = new Padding(7);
                     button.FlatStyle = FlatStyle.Flat;
-                    button.FlatAppearance.BorderColor = Color.FromArgb(97, 223, 165);
-                    button.FlatAppearance.BorderSize = 3;
-                    button.ForeColor = Color.White;
-                    button.BackColor = Color.FromArgb(36, 70, 80);
-                    button.Font = new Font("Yu Gothic UI", 21f, FontStyle.Bold);
+                    button.Font = new Font("Meiryo", 21f, FontStyle.Bold);
+                    StyleAccessibleButton(button);
                     button.Click += delegate { action(); updateLabels(); };
                     layout.Controls.Add(button, column, row);
                 };
@@ -1442,6 +1488,8 @@ namespace Win11Magnifier
                     if (line.StartsWith("device=")) savedDevice = line.Substring(7).Trim();
                     if (line.StartsWith("globalOcr="))
                         globalOcrEnabled = line.Substring(10).Trim() != "false";
+                    if (line.StartsWith("altLeft="))
+                        altLeftEnabled = line.Substring(8).Trim() == "true";
                     if (line.StartsWith("dragZoom="))
                         dragZoomEnabled = line.Substring(9).Trim() != "false";
                     if (line.StartsWith("dragVoice="))
@@ -1476,6 +1524,7 @@ namespace Win11Magnifier
                     "dragZoom=" + (dragZoomEnabled ? "true" : "false"),
                     "dragVoice=" + (dragVoiceEnabled ? "true" : "false"),
                     "globalOcr=" + (globalOcrEnabled ? "true" : "false"),
+                    "altLeft=" + (altLeftEnabled ? "true" : "false"),
                     "voiceRate=" + voiceRate.ToString(CultureInfo.InvariantCulture)
                 }, Encoding.UTF8);
             }
