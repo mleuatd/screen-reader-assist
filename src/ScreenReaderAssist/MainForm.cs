@@ -473,10 +473,11 @@ public sealed class MainForm : Form
                     new Point(point.X-rect.X,point.Y-rect.Y),_settings.ocr.preferJapanese);
             }
             var current=Cursor.Position;
-            if(IsDisposed || _busy || generation!=_cursorGeneration ||
-                Math.Abs(current.X-point.X)>10 || Math.Abs(current.Y-point.Y)>10 ||
-                mode!=_settings.reading.mode || !ReadingModes.IsAuto(mode) ||
-                !_settings.reading.autoReadEnabled || Visible) {
+            if(IsDisposed || !HoverSpeechGuard.CanDeliver(
+                point,current,generation,_cursorGeneration,
+                Control.MouseButtons!=MouseButtons.None,_busy,Visible,
+                _settings.reading.autoReadEnabled,
+                mode==_settings.reading.mode && ReadingModes.IsAuto(mode))) {
                 DiagnosticLog.Info("カーソル読み取り","カーソルが移動したため古い認識結果を破棄しました。");
                 return;
             }
