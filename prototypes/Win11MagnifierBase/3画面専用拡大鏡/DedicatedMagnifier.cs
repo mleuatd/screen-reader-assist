@@ -519,6 +519,13 @@ namespace Win11Magnifier
             return new Point(x, open ? 0 : -drawer.Height);
         }
 
+        internal static bool ShouldClose(int now, int lastInteraction,
+            bool mouseButtonHeld, bool menuOpen)
+        {
+            return !mouseButtonHeld && !menuOpen &&
+                unchecked(now - lastInteraction) >= 500;
+        }
+
         internal static int Approach(int at, int target)
         {
             long delta = (long)target - at;
@@ -1084,9 +1091,10 @@ namespace Win11Magnifier
                 drawerOpen = true;
                 lastDrawerInteraction = now;
             }
-            else if (drawerOpen && unchecked(now - lastDrawerInteraction) >= 500 &&
-                     !displaySelector.DroppedDown &&
-                     !speechText.Focused)
+            else if (drawerOpen && DrawerMath.ShouldClose(now,
+                         lastDrawerInteraction,
+                         Control.MouseButtons != MouseButtons.None,
+                         displaySelector.DroppedDown))
             {
                 drawerOpen = false;
             }
