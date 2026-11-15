@@ -492,11 +492,12 @@ namespace Win11Magnifier
             if (buttonHeld || !client.Contains(pointer)) return DrawerSide.None;
             const int edge = 16;
             if (pointer.Y - client.Top <= edge) return DrawerSide.Top;
-            int leftDistance = screen.Left - virtualDesktop.Left;
-            int rightDistance = virtualDesktop.Right - screen.Right;
-            bool leftMonitor = leftDistance <= rightDistance;
-            if (leftMonitor && pointer.X - client.Left <= edge) return DrawerSide.Left;
-            if (!leftMonitor && client.Right - 1 - pointer.X <= edge) return DrawerSide.Right;
+            // An interior monitor is not a physical desktop edge.
+            // Do not capture gestures on a middle display's left/right edge.
+            if (screen.Left <= virtualDesktop.Left &&
+                pointer.X - client.Left <= edge) return DrawerSide.Left;
+            if (screen.Right >= virtualDesktop.Right &&
+                client.Right - 1 - pointer.X <= edge) return DrawerSide.Right;
             return DrawerSide.None;
         }
 
@@ -1091,12 +1092,18 @@ namespace Win11Magnifier
                 drawerOpen = true;
                 lastDrawerInteraction = now;
             }
-            else if (drawerOpen && DrawerMath.ShouldClose(now,
-                         lastDrawerInteraction,
-                         Control.MouseButtons != MouseButtons.None,
-                         displaySelector.DroppedDown))
+            else if (drawerOpen)
             {
-                drawerOpen = false;
+                // A button hold, focused editor, keyboard traversal or open
+                // combobox is still active usage: never retract beneath it.
+                bool interacting = Control.MouseButtons != MouseButtons.None ||
+                    displaySelector.DroppedDown || controlDrawer.ContainsFocus ||
+                    (largeControlsWindow != null && largeControlsWindow.Visible);
+                if (interacting)
+                    lastDrawerInteraction = now;
+                else if (DrawerMath.ShouldClose(now, lastDrawerInteraction,
+                             false, false))
+                    drawerOpen = false;
             }
 
             Point target = DrawerMath.Target(ClientSize, controlDrawer.Size,
