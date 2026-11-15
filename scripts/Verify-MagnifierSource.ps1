@@ -91,11 +91,7 @@ if($viewerSource -notmatch 'StyleAccessibleButton\(button\)' -or
    $viewerSource -notmatch 'globalOcr.AllowAltLeft = altLeftEnabled') {
     throw 'Accessible pressed/focus button styling or safe Alt-left initialization missing'
 }
-if($mouseSource -match '(?m)^\s*refreshTimer.Start\(\);\s*
-) {
-    $startCount=[regex]::Matches($mouseSource,'(?m)^\s*refreshTimer.Start\(\);\s*
-).Count
-    if($startCount -ne 1) {throw 'Selection outline idle timer regression'}
-} else {throw 'Active selection refresh timer missing'}
+$startCount=([regex]::Matches($mouseSource,[regex]::Escape('refreshTimer.Start();'))).Count
+if($startCount -ne 1) {throw 'Idle selection timer regression: unexpected active refresh count'}
 Write-Host 'PASS: yellow press/focus, bold Japanese controls, Alt-left opt-in, and idle-timer restraint.'
 Write-Host 'PASS: 24px horizontal steps, negative drag direction and edge thresholds verified.'
