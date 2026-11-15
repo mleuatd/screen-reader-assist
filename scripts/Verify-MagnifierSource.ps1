@@ -161,6 +161,23 @@ foreach($case in @(
     $result=[bool]$close.Invoke($null,@([int]$case.now,[int]$case.last,[bool]$case.held,[bool]$case.menu))
     if($result -ne $case.expected){throw 'Drawer hide grace or interaction suppression regression'}
 }
+$retain=$drawerType.GetMethod('RetainForInteraction',$flags)
+if(-not $retain) {throw 'Drawer interaction retention policy missing'}
+foreach($case in @(
+    @{held=$false;menu=$false;text=$false;keyboard=$false;focused=$true;large=$false;want=$false},
+    @{held=$true;menu=$false;text=$false;keyboard=$false;focused=$false;large=$false;want=$true},
+    @{held=$false;menu=$true;text=$false;keyboard=$false;focused=$false;large=$false;want=$true},
+    @{held=$false;menu=$false;text=$true;keyboard=$false;focused=$false;large=$false;want=$true},
+    @{held=$false;menu=$false;text=$false;keyboard=$true;focused=$true;large=$false;want=$true},
+    @{held=$false;menu=$false;text=$false;keyboard=$true;focused=$false;large=$false;want=$false},
+    @{held=$false;menu=$false;text=$false;keyboard=$false;focused=$false;large=$true;want=$true}
+)) {
+    $got=[bool]$retain.Invoke($null,@(
+        [bool]$case.held,[bool]$case.menu,[bool]$case.text,
+        [bool]$case.keyboard,[bool]$case.focused,[bool]$case.large))
+    if($got -ne $case.want) {throw 'Drawer stuck-open or active-input hiding regression'}
+}
+Write-Host 'PASS: ordinary mouse button focus does not stick drawer; keyboard, text, menus retain it.'
 # The 500ms countdown must reset while a form control remains focused.
 # Otherwise pressing Tab or editing the speech field hides the UI underneath users.
 if($viewerSource -notmatch 'controlDrawer.ContainsFocus' -or
