@@ -480,6 +480,54 @@ namespace Win11Magnifier
         }
     }
 
+    internal enum DrawerSide { None, Top, Left, Right }
+
+    // Pure coordinate policy that is independent of WinForms controls and
+    // can be regression-tested in Windows PowerShell 5.1 without a GUI.
+    internal static class DrawerMath
+    {
+        internal static DrawerSide RevealSide(Point pointer, Rectangle client,
+            Rectangle screen, Rectangle virtualDesktop, bool buttonHeld)
+        {
+            if (buttonHeld || !client.Contains(pointer)) return DrawerSide.None;
+            const int edge = 16;
+            if (pointer.Y - client.Top <= edge) return DrawerSide.Top;
+            int leftDistance = screen.Left - virtualDesktop.Left;
+            int rightDistance = virtualDesktop.Right - screen.Right;
+            bool leftMonitor = leftDistance <= rightDistance;
+            if (leftMonitor && pointer.X - client.Left <= edge) return DrawerSide.Left;
+            if (!leftMonitor && client.Right - 1 - pointer.X <= edge) return DrawerSide.Right;
+            return DrawerSide.None;
+        }
+
+        internal static Point Target(Size client, Size drawer,
+            DrawerSide side, int anchor, bool open)
+        {
+            int maxX = Math.Max(0, client.Width - drawer.Width);
+            int maxY = Math.Max(0, client.Height - drawer.Height);
+            if (side == DrawerSide.Left)
+            {
+                int y = Math.Max(0, Math.Min(maxY, anchor - drawer.Height / 2));
+                return new Point(open ? 0 : -drawer.Width, y);
+            }
+            if (side == DrawerSide.Right)
+            {
+                int y = Math.Max(0, Math.Min(maxY, anchor - drawer.Height / 2));
+                return new Point(open ? maxX : client.Width, y);
+            }
+            int x = Math.Max(0, Math.Min(maxX, anchor - drawer.Width / 2));
+            return new Point(x, open ? 0 : -drawer.Height);
+        }
+
+        internal static int Approach(int at, int target)
+        {
+            long delta = (long)target - at;
+            if (delta == 0) return target;
+            long step = Math.Min(Math.Abs(delta), Math.Max(18, Math.Abs(delta) / 3));
+            return (int)(at + (delta < 0 ? -step : step));
+        }
+    }
+
     internal sealed class DedicatedViewer : Form
     {
         private readonly Panel viewSpace;
@@ -1030,6 +1078,8 @@ namespace Win11Magnifier
                     drawerSide = side;
                     Point local = PointToClient(cursor);
                     drawerAnchor = side == DrawerSide.Top ? local.X : local.Y;
+                    controlDrawer.Location = DrawerMath.Target(ClientSize,
+                        controlDrawer.Size, drawerSide, drawerAnchor, false);
                 }
                 drawerOpen = true;
                 lastDrawerInteraction = now;
