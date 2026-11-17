@@ -108,6 +108,8 @@ public sealed partial class MainForm : Form
         menu.Items.Add("範囲を読み上げ",null,async (_,_)=>await ReadSelection());
         menu.Items.Add("漫画の吹き出しを読む",null,async (_,_)=>await ReadBalloon());
         menu.Items.Add("注目中のUI要素を読む",null,(_,_)=>ReadFocused());
+        menu.Items.Add("クリップボードの文字を読み上げ",null,(_,_)=>ReadClipboardOnDemand());
+        menu.Items.Add("大きな文字の読書ビュー",null,(_,_)=>OpenReadingWindow());
         menu.Items.Add("日本語音声の性能を検証",null,async (_,_)=>await DiagnoseJapaneseVoice());
         menu.Items.Add("動作ログを表示",null,(_,_)=>OpenDiagnosticLog());
         menu.Items.Add("画面の拡大表示を解除（復旧）",null,(_,_)=>ResetDisplayFromUser());
@@ -631,6 +633,7 @@ public sealed partial class MainForm : Form
             }
             DiagnosticLog.Info("漫画OCR",$"吹き出しを認識しました。文字数={text.Length}。");
             _lastText=text;_last.Text=text;
+            RecordRead("漫画OCR",text);
             _speech.Speak(text,_settings.speech);
             Status("漫画の吹き出しを読み上げ中。");
         } catch(Exception ex) {DiagnosticLog.Error("漫画OCR",ex);Status("漫画モードエラー: "+ex.Message);} finally {_busy=false;}
@@ -650,6 +653,7 @@ public sealed partial class MainForm : Form
             }
             DiagnosticLog.Info("文字認識",$"文字認識成功。文字数={text.Length}、所要時間={watch.ElapsedMilliseconds}ms。");
             _lastText=text;_last.Text=text;
+            RecordRead("範囲OCR",text);
             if(_settings.ocr.copyToClipboard) Clipboard.SetText(text);
             _speech.Speak(text,_settings.speech);
             Status($"読み上げ中（{text.Length}文字）。音声が出ない場合はWindowsの音声を確認してください。");
@@ -704,6 +708,7 @@ public sealed partial class MainForm : Form
             string text=UiAutomationReader.ReadFocused();
             if(string.IsNullOrWhiteSpace(text)) {Status("フォーカス中のUI要素から文字を取得できませんでした。範囲読み上げを試してください。");return;}
             _lastText=text;_last.Text=text;
+            RecordRead("UI要素",text);
             _speech.Speak(text,_settings.speech);Status("UI Automationから読み上げました。");
         } catch(Exception ex){Status("UI Automationエラー: "+ex.Message);}
     }
