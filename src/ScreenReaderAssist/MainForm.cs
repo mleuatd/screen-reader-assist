@@ -2,7 +2,7 @@ using System.Drawing;
 using System.Text.Json;
 namespace ScreenReaderAssist;
 
-public sealed class MainForm : Form
+public sealed partial class MainForm : Form
 {
     private AppSettings _settings;
     private readonly SpeechService _speech = new();
