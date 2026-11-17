@@ -110,6 +110,7 @@ public sealed partial class MainForm : Form
         menu.Items.Add("注目中のUI要素を読む",null,(_,_)=>ReadFocused());
         menu.Items.Add("クリップボードの文字を読み上げ",null,(_,_)=>ReadClipboardOnDemand());
         menu.Items.Add("大きな文字の読書ビュー",null,(_,_)=>OpenReadingWindow());
+        menu.Items.Add("読み上げ履歴を大画面で開く",null,(_,_)=>OpenReadingHistoryWindow());
         menu.Items.Add("日本語音声の性能を検証",null,async (_,_)=>await DiagnoseJapaneseVoice());
         menu.Items.Add("動作ログを表示",null,(_,_)=>OpenDiagnosticLog());
         menu.Items.Add("画面の拡大表示を解除（復旧）",null,(_,_)=>ResetDisplayFromUser());
@@ -755,7 +756,19 @@ public sealed partial class MainForm : Form
     private void Quit() {DiagnosticLog.Info("終了","通知領域などから終了しました。");_quitting=true;Close();}
     protected override void Dispose(bool disposing)
     {
-        if(disposing){DiagnosticLog.EntryAdded-=OnLogEntryAdded;_healthTimer.Stop();_healthTimer.Dispose();_cursorTimer.Stop();_cursorTimer.Dispose();_hoverGate.Dispose();_ocr.Dispose();_speech.Dispose();_tray.Visible=false;_tray.Dispose();}
+        if(disposing){
+            // Independent reading windows must not retain personal OCR text after exit.
+            if(_readerWindow is {IsDisposed:false}) _readerWindow.Close();
+            if(_historyWindow is {IsDisposed:false}) _historyWindow.Close();
+            _readingShelf.Clear();
+            _readerSelectedText="";
+            _lastText="";
+            DiagnosticLog.EntryAdded-=OnLogEntryAdded;
+            _healthTimer.Stop();_healthTimer.Dispose();
+            _cursorTimer.Stop();_cursorTimer.Dispose();
+            _hoverGate.Dispose();_ocr.Dispose();_speech.Dispose();
+            _tray.Visible=false;_tray.Dispose();
+        }
         base.Dispose(disposing);
     }
 }

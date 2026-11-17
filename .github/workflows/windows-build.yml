@@ -26,6 +26,12 @@ jobs:
         run: dotnet build src/ScreenReaderAssist/ScreenReaderAssist.csproj -c Release --no-restore
       - name: Logic smoke tests
         run: dotnet run --project tests/ScreenReaderAssist.Tests/ScreenReaderAssist.Tests.csproj -c Release
+      - name: 読み上げ履歴と読書ビューの実WinForms操作テスト（STA）
+        shell: pwsh
+        timeout-minutes: 3
+        run: |
+          dotnet run --project tests/ScreenReaderAssist.Tests/ScreenReaderAssist.Tests.csproj -c Release --no-build -- --reading-ui
+          if ($LASTEXITCODE -ne 0) { throw '読み上げ履歴・大きな読書ビューのGUI回帰テスト失敗' }
       - name: 日本語SAPI音声の性能テスト（日本語音声が無い環境は未検証として明記）
         shell: pwsh
         timeout-minutes: 5

@@ -2,6 +2,7 @@ using ScreenReaderAssist;
 using System.Drawing;
 using System.Text.Json;
 
+if(args.Contains("--reading-ui",StringComparer.OrdinalIgnoreCase)) {Environment.ExitCode=ReadingUiSmoke.Run();return;}
 if(args.Contains("--benchmark-tts",StringComparer.OrdinalIgnoreCase)) {Environment.ExitCode=JapaneseTtsBenchmark.Run();return;}
 if(args.Contains("--benchmark-tts-ja",StringComparer.OrdinalIgnoreCase)) {Environment.ExitCode=JapaneseTtsBenchmark.Run();return;}
 if(args.Contains("--benchmark-onecore-ja",StringComparer.OrdinalIgnoreCase)) {Environment.ExitCode=await OneCoreJapaneseBenchmark.RunAsync();return;}
@@ -30,6 +31,54 @@ Check(shelf.Entries[0].Text=="履歴番号79" && shelf.Entries[^1].Text=="履歴
 shelf.Clear();
 Check(shelf.Entries.Count==0 && shelf.Search("OCR").Count==0,
     "privacy clearing erases all in-memory history");
+// Matrix: null/empty/whitespace, Unicode, Japanese source, truncation boundaries,
+// de-duplication, search isolation, mutable views, capacity, time and clear.
+Check(!shelf.Add(null,null) && !shelf.Add(null,"") && !shelf.Add(null,"　\t\n"),
+    "reading history rejects null, empty and Japanese whitespace");
+Check(shelf.Add(null,"値") && shelf.Entries[0].Source=="読み取り",
+    "reading history assigns accessible default source");
+Check(shelf.Add(new string('S',50),"長いソース") &&
+      shelf.Entries[0].Source.Length==40,
+    "long source names are bounded");
+Check(shelf.Add("絵文字","😺") && shelf.Entries[0].Text=="😺",
+    "Unicode emoji text round-trips without loss");
+Check(ReadingShelf.TruncateWithoutBreakingSurrogate(new string('い',19999)+"😺末尾",
+    20000)==new string('い',19999),"UTF-16 cutoff never leaves half of emoji surrogate pair");
+Check(ReadingShelf.TruncateWithoutBreakingSurrogate("😺",2)=="😺" &&
+      ReadingShelf.TruncateWithoutBreakingSurrogate("ABC",0)=="",
+    "Unicode cutoff handles full emoji and zero limit");
+try {ReadingShelf.TruncateWithoutBreakingSurrogate("a",-1);
+    throw new Exception("FAIL: negative Unicode truncation limit accepted");}
+catch(ArgumentOutOfRangeException) {Console.WriteLine("PASS: negative truncation length rejected");}
+var bounded=new ReadingShelf();
+var giant=new string('い',19999)+"😺末尾";
+Check(bounded.Add("境界",giant) && bounded.Entries[0].Text.Length==19999,
+    "reading shelf respects grapheme-safe cap around surrogate pairs");
+Check(!bounded.Add("境界",giant),
+    "repeated oversized text is deduplicated after normalization");
+Check(bounded.Add("境界","別の文章") && bounded.Add("境界",giant),
+    "same text is allowed again after different intervening reading");
+Check(bounded.Search("ないキーワード").Count==0,
+    "search of absent Japanese keyword yields zero items");
+var searchBefore=bounded.Entries.Select(x=>x.Text).ToArray();
+var subset=bounded.Search("境界");
+Check(subset.Count==3 && bounded.Entries.Select(x=>x.Text).SequenceEqual(searchBefore),
+    "search leaves original history order and contents unchanged");
+var snapshot=bounded.Search(null);
+Check(snapshot.Count==3 && snapshot is not List<ReadingEntry>,
+    "unfiltered search returns nonmutable independent snapshot");
+Check(bounded.Entries is not List<ReadingEntry>,
+    "history entries do not expose mutable backing List");
+var newline=new ReadingEntry("OCR","日本語\r\n二行目",new DateTimeOffset(2026,11,17,10,0,0,TimeSpan.FromHours(9)));
+Check(!newline.ToString().Contains('\n') && newline.ToString().Contains("二行目"),
+    "history display labels flatten multiline text without altering saved content");
+var longLabel=new ReadingEntry("OCR",new string('A',90),DateTimeOffset.Now);
+Check(longLabel.ToString().Contains("…"),
+    "long history list labels are abbreviated without changing original text");
+bounded.Clear();
+Check(bounded.Entries.Count==0 && bounded.Search("").Count==0,
+    "clear also clears all search results");
+
 var settings=AppSettings.Normalize(new AppSettings {speech = new SpeechSettings{rate=99,volume=-12}, magnifier=new MagnifierSettings{zoom=30}});
 Check(settings.speech.rate==10,"speech rate clamped");
 Check(settings.speech.volume==0,"volume clamped");

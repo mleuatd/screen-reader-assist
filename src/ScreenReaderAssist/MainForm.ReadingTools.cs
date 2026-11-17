@@ -4,6 +4,7 @@ namespace ScreenReaderAssist;
 
 public sealed partial class MainForm
 {
+    private Form? _historyWindow;
     private Control BuildReadingHistoryPanel()
     {
         var panel = new TableLayoutPanel {
@@ -30,10 +31,11 @@ public sealed partial class MainForm
                     _readerContent.Text=entry.Text;
             }
         };
-        _historyList.DoubleClick+=(_,_)=>OpenReadingWindow();
+        _historyList.DoubleClick+=(_,_)=>OpenReadingWindow(true);
         panel.Controls.Add(_historyList,0,1);
         var actions = new FlowLayoutPanel {AutoSize=true,Dock=DockStyle.Fill,WrapContents=true};
-        AddReadingAction(actions,"大きな文字で読む",OpenReadingWindow);
+        AddReadingAction(actions,"履歴を大画面で開く",OpenReadingHistoryWindow);
+        AddReadingAction(actions,"大きな文字で読む",()=>OpenReadingWindow(true));
         AddReadingAction(actions,"選択した文章を読み上げ",()=>{
             if(_historyList.SelectedItem is ReadingEntry entry) {
                 _speech.Speak(entry.Text,_settings.speech);
@@ -47,15 +49,20 @@ public sealed partial class MainForm
             }
         });
         AddReadingAction(actions,"クリップボードを読む",ReadClipboardOnDemand);
-        AddReadingAction(actions,"履歴をすべて消す",()=>{
-            _readingShelf.Clear();
-            _readerSelectedText="";
-            if(_readerContent!=null && !_readerContent.IsDisposed)_readerContent.Clear();
-            RefreshReadingHistory();
-            Status("読み上げ履歴を消しました。");
-        });
+        AddReadingAction(actions,"履歴をすべて消す",ClearReadingHistory);
         panel.Controls.Add(actions,0,2);
         return panel;
+    }
+
+    private void ClearReadingHistory()
+    {
+        _readingShelf.Clear();
+        _readerSelectedText="";
+        _lastText="";
+        _last.Clear();
+        if(_readerContent!=null && !_readerContent.IsDisposed)_readerContent.Clear();
+        RefreshReadingHistory();
+        Status("読み上げ履歴と最後の読み取り内容を消しました。");
     }
 
     private static void AddReadingAction(FlowLayoutPanel panel,string title,Action action)
@@ -112,6 +119,38 @@ public sealed partial class MainForm
         finally {_historyList.EndUpdate();}
     }
 
+    private void OpenReadingHistoryWindow()
+    {
+        if(_historyWindow is {IsDisposed:false}) {
+            _historyWindow.Activate();return;
+        }
+        var panel=_historyList.Parent;
+        if(panel==null || panel.Parent==null) return;
+        var originalParent=panel.Parent;
+        var window=new Form {
+            Text="読み上げ履歴（最新30件・一時保存）",
+            Size=new Size(1050,730),MinimumSize=new Size(620,440),
+            StartPosition=FormStartPosition.CenterScreen,
+            Font=new Font("Meiryo",12f,FontStyle.Bold),
+            BackColor=Color.FromArgb(17,23,35),ForeColor=Color.White,
+            AccessibleName="読み上げ履歴を大きく表示するウィンドウ"
+        };
+        _historyWindow=window;
+        originalParent.Controls.Remove(panel);
+        window.Controls.Add(panel);
+        panel.Dock=DockStyle.Fill;
+        window.FormClosed+=(_,_)=>{
+            if(!IsDisposed && !originalParent.IsDisposed && !panel.IsDisposed) {
+                window.Controls.Remove(panel);
+                originalParent.Controls.Add(panel);
+                panel.Dock=DockStyle.Fill;
+            }
+            _historyWindow=null;
+        };
+        window.Show();
+        window.Activate();
+    }
+
     private void ReadClipboardOnDemand()
     {
         try {
@@ -123,8 +162,10 @@ public sealed partial class MainForm
                 Status("クリップボードに文字がありません。");return;
             }
             // Explicitly initiated; never overwrite the clipboard or auto-monitor it.
-            string safe=text.Length>ReadingShelf.MaximumCharacters
-                ? text[..ReadingShelf.MaximumCharacters] : text;
+            string safe=ReadingShelf.TruncateWithoutBreakingSurrogate(
+                text,ReadingShelf.MaximumCharacters);
+            _lastText=safe;
+            _last.Text=safe;
             RecordRead("クリップボード",safe);
             _speech.Speak(safe,_settings.speech);
             Status("クリップボードの文章を読み上げ中。");
@@ -135,10 +176,12 @@ public sealed partial class MainForm
         }
     }
 
-    private void OpenReadingWindow()
+    private void OpenReadingWindow(bool fromHistory=false)
     {
-        if(_historyList.SelectedItem is ReadingEntry entry)
+        if(fromHistory && _historyList.SelectedItem is ReadingEntry entry)
             _readerSelectedText=entry.Text;
+        else if(!fromHistory && !string.IsNullOrWhiteSpace(_lastText))
+            _readerSelectedText=_lastText;
         if(string.IsNullOrWhiteSpace(_readerSelectedText))
             _readerSelectedText=_lastText;
         if(string.IsNullOrWhiteSpace(_readerSelectedText)){
@@ -201,7 +244,7 @@ public sealed partial class MainForm
             _readerWindow=null;_readerContent=null;
         };
         ApplyReaderStyle();
-        reader.Show(this);
+        reader.Show(); // Standalone reader also works while main settings stay hidden.
         reader.Activate();
     }
 

@@ -9,14 +9,14 @@ public sealed class ReadingShelf
     public const int Capacity = 30;
     public const int MaximumCharacters = 20_000;
     private readonly List<ReadingEntry> _entries = new();
-    public IReadOnlyList<ReadingEntry> Entries => _entries;
+    public IReadOnlyList<ReadingEntry> Entries => _entries.AsReadOnly();
     public bool Add(string? source, string? text, DateTimeOffset? time = null)
     {
         if (string.IsNullOrWhiteSpace(text)) return false;
         string value = text.Trim();
-        if (value.Length > MaximumCharacters) value = value[..MaximumCharacters];
+        if (value.Length > MaximumCharacters) value = TruncateWithoutBreakingSurrogate(value,MaximumCharacters);
         string name = string.IsNullOrWhiteSpace(source) ? "読み取り" : source.Trim();
-        if (name.Length > 40) name = name[..40];
+        if (name.Length > 40) name = TruncateWithoutBreakingSurrogate(name,40);
         // Avoid dozens of identical hover results or duplicate manual reads.
         if (_entries.Count > 0 && _entries[0].Text == value &&
             _entries[0].Source == name) return false;
@@ -25,9 +25,21 @@ public sealed class ReadingShelf
         return true;
     }
     public void Clear() => _entries.Clear();
+    // Cut at a UTF-16 boundary without leaving a broken emoji surrogate pair.
+    public static string TruncateWithoutBreakingSurrogate(string text,int maxLength)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        if(maxLength < 0) throw new ArgumentOutOfRangeException(nameof(maxLength));
+        if(text.Length <= maxLength) return text;
+        int length=maxLength;
+        if(length>0 && char.IsHighSurrogate(text[length-1]) &&
+           length<text.Length && char.IsLowSurrogate(text[length]))
+            length--;
+        return text[..length];
+    }
     public IReadOnlyList<ReadingEntry> Search(string? query)
     {
-        if (string.IsNullOrWhiteSpace(query)) return _entries;
+        if (string.IsNullOrWhiteSpace(query)) return _entries.ToArray();
         string q = query.Trim();
         return _entries.Where(e => e.Source.Contains(q, StringComparison.CurrentCultureIgnoreCase) ||
             e.Text.Contains(q, StringComparison.CurrentCultureIgnoreCase)).ToArray();
