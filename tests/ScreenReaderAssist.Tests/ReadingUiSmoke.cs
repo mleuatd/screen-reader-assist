@@ -83,6 +83,33 @@ internal static class ReadingUiSmoke
         search.Text="";
         Check(list.Items.Count==2,"clearing search restores entries");
 
+        // Exercise the real Windows clipboard (not just a string helper).
+        string? oldClipboard=Clipboard.ContainsText()?Clipboard.GetText():null;
+        try {
+            Clipboard.SetText("クリップボードから読み上げる文章");
+            Call(settings,"ReadClipboardOnDemand");
+            Check(shelf.Entries[0].Source=="クリップボード" &&
+                shelf.Entries[0].Text=="クリップボードから読み上げる文章",
+                "explicit Windows clipboard text is added to reading history");
+            Check(Clipboard.GetText()=="クリップボードから読み上げる文章",
+                "clipboard reading does not overwrite copied text");
+            Check(((string)Get(settings,"_lastText")!)=="クリップボードから読み上げる文章",
+                "clipboard reading updates latest text for tray reader");
+            Clipboard.Clear();
+            var n=shelf.Entries.Count;
+            Call(settings,"ReadClipboardOnDemand");
+            Check(shelf.Entries.Count==n,
+                "empty Windows clipboard is handled without a phantom history entry");
+        }
+        finally {
+            if(oldClipboard!=null)Clipboard.SetText(oldClipboard);
+            else Clipboard.Clear();
+        }
+        search.Text="範囲OCR";
+        Check(list.Items.Count==1,
+            "filter by source isolates the original selected OCR entry");
+        search.Text="";
+
         // Explicitly select an old entry and show in the large-text window.
         list.SelectedIndex=1;
         Call(settings,"OpenReadingWindow",true);
@@ -129,6 +156,26 @@ internal static class ReadingUiSmoke
         reader.Close();
         Check(GetNullable(settings,"_readerWindow")==null,
             "reader window is disposed and reference cleared on close");
+        Call(settings,"OpenReadingWindow",false);
+        Check(GetNullable(settings,"_readerWindow")==null,
+            "after clearing history the reader cannot resurrect sensitive text");
+        var tray=(NotifyIcon)Get(settings,"_tray")!;
+        Check(tray.ContextMenuStrip?.Items.Cast<ToolStripItem>().Any(
+            item=>item.Text.Contains("クリップボードの文字を読み上げ"))==true,
+            "explicit clipboard speech is reachable from the tray menu");
+        Check(tray.ContextMenuStrip?.Items.Cast<ToolStripItem>().Any(
+            item=>item.Text.Contains("履歴を大画面で開く"))==true,
+            "history window is reachable from tray without opening settings");
+        Call(settings,"RecordRead","範囲OCR","終了時消去テスト");
+        Call(settings,"OpenReadingWindow",true);
+        var closingReader=(Form)Get(settings,"_readerWindow")!;
+        Call(settings,"OpenReadingHistoryWindow");
+        var closingHistory=(Form)Get(settings,"_historyWindow")!;
+        settings.Dispose();
+        Check(closingReader.IsDisposed && closingHistory.IsDisposed &&
+            shelf.Entries.Count==0,
+            "quitting disposes both reading windows and erases volatile history");
+
     }
     private static object? GetNullable(object form,string field)
     {
