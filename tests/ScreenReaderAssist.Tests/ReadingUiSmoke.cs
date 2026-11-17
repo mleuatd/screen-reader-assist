@@ -111,7 +111,8 @@ internal static class ReadingUiSmoke
         search.Text="";
 
         // Explicitly select an old entry and show in the large-text window.
-        list.SelectedIndex=1;
+        list.SelectedItem=list.Items.Cast<ReadingEntry>()
+            .First(entry=>entry.Source=="範囲OCR");
         Call(settings,"OpenReadingWindow",true);
         var reader=(Form)Get(settings,"_readerWindow")!;
         var content=(RichTextBox)Get(settings,"_readerContent")!;
@@ -133,7 +134,8 @@ internal static class ReadingUiSmoke
         Call(settings,"ApplyReaderStyle");
         Check(content.Font.Size<=16.1f,"reader supports 16-point font");
         // Changing list selection while the window is open must update the text.
-        list.SelectedIndex=0;
+        list.SelectedItem=list.Items.Cast<ReadingEntry>()
+            .First(entry=>entry.Source=="漫画OCR");
         Check(content.Text=="漫画の文字","open reader follows selected history item");
         Call(settings,"OpenReadingHistoryWindow");
         var history=(Form)Get(settings,"_historyWindow")!;
