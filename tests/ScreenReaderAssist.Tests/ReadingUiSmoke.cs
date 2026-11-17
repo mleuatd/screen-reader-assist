@@ -123,7 +123,7 @@ internal static class ReadingUiSmoke
         Call(settings,"ClearReadingHistory");
         Check(shelf.Entries.Count==0 && list.Items.Count==0,
             "clear erases every history entry and list item");
-        Check((string)Get(settings,"_lastText")!=="", "clear erases cached last text");
+        Check(((string)Get(settings,"_lastText")!)=="", "clear erases cached last text");
         Check(last.Text=="" && content.Text=="" ,
             "clear also wipes last-text box and open reader content");
         reader.Close();
