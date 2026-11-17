@@ -6,6 +6,19 @@ public sealed class MainForm : Form
 {
     private AppSettings _settings;
     private readonly SpeechService _speech = new();
+    private readonly ReadingShelf _readingShelf = new();
+    private readonly ListBox _historyList = new() {
+        Dock=DockStyle.Fill,IntegralHeight=false,
+        AccessibleName="最近読み取った文章の一覧"
+    };
+    private readonly TextBox _historySearch = new() {
+        Width=230,PlaceholderText="履歴を検索",AccessibleName="読み上げ履歴を検索"
+    };
+    private Form? _readerWindow;
+    private RichTextBox? _readerContent;
+    private string _readerSelectedText="";
+    private bool _readerReverse = true;
+    private float _readerFontSize = 24f;
     private readonly OcrService _ocr = new();
     // Fullscreen magnification disabled: forcibly killing an app leaves the desktop transformed.
     private readonly NotifyIcon _tray;
@@ -234,10 +247,13 @@ public sealed class MainForm : Form
         var tabs=new TabControl { Dock=DockStyle.Fill,AccessibleName="認識文字と動作状況" };
         var diagnosticPage=new TabPage("動作状況（リアルタイム）");
         var lastTextPage=new TabPage("最後に認識した文字");
+        var historyPage=new TabPage("読み上げ履歴・読書ビュー");
         diagnosticPage.Controls.Add(_diagnosticEvents);
         lastTextPage.Controls.Add(_last);
         tabs.TabPages.Add(diagnosticPage);
         tabs.TabPages.Add(lastTextPage);
+        historyPage.Controls.Add(BuildReadingHistoryPanel());
+        tabs.TabPages.Add(historyPage);
         panel.Controls.Add(tabs,0,row);panel.SetColumnSpan(tabs,2);
         tabs.MinimumSize=new Size(0,150);
         _last.Dock=DockStyle.Fill;
