@@ -2,10 +2,23 @@ using System.Drawing;
 using System.Text.Json;
 namespace ScreenReaderAssist;
 
-public sealed class MainForm : Form
+public sealed partial class MainForm : Form
 {
     private AppSettings _settings;
     private readonly SpeechService _speech = new();
+    private readonly ReadingShelf _readingShelf = new();
+    private readonly ListBox _historyList = new() {
+        Dock=DockStyle.Fill,IntegralHeight=false,
+        AccessibleName="最近読み取った文章の一覧"
+    };
+    private readonly TextBox _historySearch = new() {
+        Width=230,PlaceholderText="履歴を検索",AccessibleName="読み上げ履歴を検索"
+    };
+    private Form? _readerWindow;
+    private RichTextBox? _readerContent;
+    private string _readerSelectedText="";
+    private bool _readerReverse = true;
+    private float _readerFontSize = 24f;
     private readonly OcrService _ocr = new();
     // Fullscreen magnification disabled: forcibly killing an app leaves the desktop transformed.
     private readonly NotifyIcon _tray;
@@ -95,6 +108,8 @@ public sealed class MainForm : Form
         menu.Items.Add("範囲を読み上げ",null,async (_,_)=>await ReadSelection());
         menu.Items.Add("漫画の吹き出しを読む",null,async (_,_)=>await ReadBalloon());
         menu.Items.Add("注目中のUI要素を読む",null,(_,_)=>ReadFocused());
+        menu.Items.Add("クリップボードの文字を読み上げ",null,(_,_)=>ReadClipboardOnDemand());
+        menu.Items.Add("大きな文字の読書ビュー",null,(_,_)=>OpenReadingWindow());
         menu.Items.Add("日本語音声の性能を検証",null,async (_,_)=>await DiagnoseJapaneseVoice());
         menu.Items.Add("動作ログを表示",null,(_,_)=>OpenDiagnosticLog());
         menu.Items.Add("画面の拡大表示を解除（復旧）",null,(_,_)=>ResetDisplayFromUser());
@@ -234,10 +249,13 @@ public sealed class MainForm : Form
         var tabs=new TabControl { Dock=DockStyle.Fill,AccessibleName="認識文字と動作状況" };
         var diagnosticPage=new TabPage("動作状況（リアルタイム）");
         var lastTextPage=new TabPage("最後に認識した文字");
+        var historyPage=new TabPage("読み上げ履歴・読書ビュー");
         diagnosticPage.Controls.Add(_diagnosticEvents);
         lastTextPage.Controls.Add(_last);
         tabs.TabPages.Add(diagnosticPage);
         tabs.TabPages.Add(lastTextPage);
+        historyPage.Controls.Add(BuildReadingHistoryPanel());
+        tabs.TabPages.Add(historyPage);
         panel.Controls.Add(tabs,0,row);panel.SetColumnSpan(tabs,2);
         tabs.MinimumSize=new Size(0,150);
         _last.Dock=DockStyle.Fill;
@@ -615,6 +633,7 @@ public sealed class MainForm : Form
             }
             DiagnosticLog.Info("漫画OCR",$"吹き出しを認識しました。文字数={text.Length}。");
             _lastText=text;_last.Text=text;
+            RecordRead("漫画OCR",text);
             _speech.Speak(text,_settings.speech);
             Status("漫画の吹き出しを読み上げ中。");
         } catch(Exception ex) {DiagnosticLog.Error("漫画OCR",ex);Status("漫画モードエラー: "+ex.Message);} finally {_busy=false;}
@@ -634,6 +653,7 @@ public sealed class MainForm : Form
             }
             DiagnosticLog.Info("文字認識",$"文字認識成功。文字数={text.Length}、所要時間={watch.ElapsedMilliseconds}ms。");
             _lastText=text;_last.Text=text;
+            RecordRead("範囲OCR",text);
             if(_settings.ocr.copyToClipboard) Clipboard.SetText(text);
             _speech.Speak(text,_settings.speech);
             Status($"読み上げ中（{text.Length}文字）。音声が出ない場合はWindowsの音声を確認してください。");
@@ -688,6 +708,7 @@ public sealed class MainForm : Form
             string text=UiAutomationReader.ReadFocused();
             if(string.IsNullOrWhiteSpace(text)) {Status("フォーカス中のUI要素から文字を取得できませんでした。範囲読み上げを試してください。");return;}
             _lastText=text;_last.Text=text;
+            RecordRead("UI要素",text);
             _speech.Speak(text,_settings.speech);Status("UI Automationから読み上げました。");
         } catch(Exception ex){Status("UI Automationエラー: "+ex.Message);}
     }

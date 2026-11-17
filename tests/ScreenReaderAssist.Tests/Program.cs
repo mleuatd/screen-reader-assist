@@ -13,6 +13,23 @@ if(args.Length==2 && args[0].Equals("--paddle-ja",StringComparison.OrdinalIgnore
 }
 
 static void Check(bool condition,string message) {if(!condition) throw new Exception("FAIL: "+message);Console.WriteLine("PASS: "+message);}
+var shelf=new ReadingShelf();
+Check(!shelf.Add("OCR","   "),"empty OCR text is not added to reading history");
+Check(shelf.Add("範囲OCR"," 日本語の読み取りテスト "),"manual OCR stored in volatile reading history");
+Check(shelf.Entries[0].Text=="日本語の読み取りテスト","reading shelf trims whitespace");
+Check(!shelf.Add("範囲OCR","日本語の読み取りテスト"),"immediate duplicate reading suppressed");
+Check(shelf.Add("UI","日本語の読み取りテスト"),"same text from different source kept");
+Check(shelf.Search("読み取り").Count==2,"search matches Japanese recognized text");
+Check(shelf.Search("ui").Count==1,"search matches source without case sensitivity");
+Check(shelf.Add("OCR",new string('あ',25000)) && shelf.Entries[0].Text.Length==ReadingShelf.MaximumCharacters,
+    "large captured text is capped to prevent UI and memory bloat");
+for(int i=0;i<80;i++) shelf.Add("履歴", "履歴番号"+i);
+Check(shelf.Entries.Count==ReadingShelf.Capacity,"reading shelf is bounded to 30 entries");
+Check(shelf.Entries[0].Text=="履歴番号79" && shelf.Entries[^1].Text=="履歴番号50",
+    "newest entries are first and oldest are evicted");
+shelf.Clear();
+Check(shelf.Entries.Count==0 && shelf.Search("OCR").Count==0,
+    "privacy clearing erases all in-memory history");
 var settings=AppSettings.Normalize(new AppSettings {speech = new SpeechSettings{rate=99,volume=-12}, magnifier=new MagnifierSettings{zoom=30}});
 Check(settings.speech.rate==10,"speech rate clamped");
 Check(settings.speech.volume==0,"volume clamped");
