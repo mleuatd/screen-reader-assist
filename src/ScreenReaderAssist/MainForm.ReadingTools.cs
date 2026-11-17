@@ -5,7 +5,6 @@ namespace ScreenReaderAssist;
 public sealed partial class MainForm
 {
     private Form? _historyWindow;
-    private Control? _historyPanelOriginalParent;
     private Control BuildReadingHistoryPanel()
     {
         var panel = new TableLayoutPanel {
@@ -50,17 +49,20 @@ public sealed partial class MainForm
             }
         });
         AddReadingAction(actions,"クリップボードを読む",ReadClipboardOnDemand);
-        AddReadingAction(actions,"履歴をすべて消す",()=>{
-            _readingShelf.Clear();
-            _readerSelectedText="";
-            _lastText="";
-            _last.Clear();
-            if(_readerContent!=null && !_readerContent.IsDisposed)_readerContent.Clear();
-            RefreshReadingHistory();
-            Status("読み上げ履歴を消しました。");
-        });
+        AddReadingAction(actions,"履歴をすべて消す",ClearReadingHistory);
         panel.Controls.Add(actions,0,2);
         return panel;
+    }
+
+    private void ClearReadingHistory()
+    {
+        _readingShelf.Clear();
+        _readerSelectedText="";
+        _lastText="";
+        _last.Clear();
+        if(_readerContent!=null && !_readerContent.IsDisposed)_readerContent.Clear();
+        RefreshReadingHistory();
+        Status("読み上げ履歴と最後の読み取り内容を消しました。");
     }
 
     private static void AddReadingAction(FlowLayoutPanel panel,string title,Action action)
@@ -125,7 +127,6 @@ public sealed partial class MainForm
         var panel=_historyList.Parent;
         if(panel==null || panel.Parent==null) return;
         var originalParent=panel.Parent;
-        _historyPanelOriginalParent=originalParent;
         var window=new Form {
             Text="読み上げ履歴（最新30件・一時保存）",
             Size=new Size(1050,730),MinimumSize=new Size(620,440),
@@ -145,7 +146,6 @@ public sealed partial class MainForm
                 panel.Dock=DockStyle.Fill;
             }
             _historyWindow=null;
-            _historyPanelOriginalParent=null;
         };
         window.Show();
         window.Activate();
